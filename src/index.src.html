@@ -180,6 +180,18 @@ table.sides td:last-child{text-align:right;font-weight:700}
   .demo-badge{font-size:11px}
 }
 .grab{display:none}
+/* map tools: small round buttons in the top-right corner */
+.map-tools{position:absolute;top:12px;right:12px;z-index:550;display:flex;flex-direction:column;gap:8px}
+.tool{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:rgba(15,23,32,.9);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);padding:0}
+.tool.on{background:var(--sand);color:var(--ink);border-color:var(--sand)}
+.tool svg{width:22px;height:22px}
+#layer-menu{position:absolute;top:0;right:54px;width:236px;background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:var(--shadow);display:grid;gap:6px}
+#layer-menu h5{margin:4px 2px 0;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.opt{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid var(--line);background:var(--ink);border-radius:10px;padding:8px 10px;text-align:left;cursor:pointer;width:100%}
+.opt.on{border-color:var(--sand);box-shadow:inset 0 0 0 1px var(--sand)}
+.opt b{font-size:14px}.opt span{font-size:12px;color:var(--muted)}
+.lg{display:flex;align-items:center;gap:8px;font-size:13px;padding:1px 2px}.lg i{width:16px;height:10px;border-radius:2px;border:2px solid;flex:none}
+@media (min-width:821px){body.detail-open .map-tools{right:404px}}
 /* place names */
 .pl{width:max-content;white-space:nowrap;font-weight:800;font-size:12.5px;color:#fff;text-shadow:0 1px 3px #000,0 0 2px #000,0 0 6px rgba(0,0,0,.8);display:inline-flex;align-items:center;gap:5px;transform:translate(-6px,-50%);pointer-events:auto;cursor:pointer}
 .pl i{width:10px;height:10px;border-radius:50%;border:2px solid #fff;flex:none;box-shadow:0 0 3px #000}
@@ -241,9 +253,21 @@ table.sides td:last-child{text-align:right;font-weight:700}
       <div id="results"></div>
     </aside>
     <div id="map">
-      <div class="layer-switch"><button data-layer="sat" class="on">New satellite</button><button data-layer="groad">Google</button><button data-layer="ghyb">Google sat.</button></div>
-      <div class="legend"><span><i style="border-color:#fff"></i>For sale</span><span><i style="border-color:var(--res)"></i>Reserved</span><span><i style="border-color:var(--sold);border-style:dashed"></i>Sold</span><span><i style="border-color:var(--sand);border-width:0 0 3px"></i>Road side</span></div>
-      <div class="addplace"><button class="btn primary" id="add-place">+ Place name</button></div>
+      <div class="map-tools">
+        <button class="tool" id="btn-layers" title="Map type and legend" aria-label="Map type and legend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5z"/><path d="m2 13 10 5 10-5"/></svg></button>
+        <button class="tool" id="add-place" title="Add a place name" aria-label="Add a place name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><path d="M12 7v6M9 10h6"/></svg></button>
+        <div id="layer-menu" class="hidden">
+          <h5>Map</h5>
+          <button class="opt on" data-layer="sat"><b>New satellite</b><span>Newest pictures, new roads</span></button>
+          <button class="opt" data-layer="groad"><b>Google</b><span>Street map with place names</span></button>
+          <button class="opt" data-layer="ghyb"><b>Google satellite</b><span>Older pictures + names</span></button>
+          <h5>Legend</h5>
+          <div class="lg"><i style="border-color:#fff"></i>For sale</div>
+          <div class="lg"><i style="border-color:var(--res)"></i>Reserved</div>
+          <div class="lg"><i style="border-color:var(--sold);border-style:dashed"></i>Sold</div>
+          <div class="lg"><i style="border-color:var(--sand);border-width:0 0 3px;border-radius:0"></i>Side facing the road</div>
+        </div>
+      </div>
       <div class="addbanner hidden" id="add-banner">Tap the map where the place is <button id="add-cancel">Cancel</button></div>
       <div class="sheet hidden" id="place-sheet"></div>
       <div id="detail" class="hidden"></div>
@@ -409,17 +433,26 @@ function loadGoogle() {
 }
 window.gm_authFailure = () => { toast('Google refused the map key. Showing the new satellite map instead.'); switchLayer('sat'); };
 
+const MAP_NAMES = { sat: 'New satellite', groad: 'Google', ghyb: 'Google satellite' };
+let mapChoice = 'sat';     // remembered for the capture map too
+// make a fresh background layer (Google ones load Google first)
+async function makeBase(name) {
+  if (name === 'sat') return satLayer();
+  try { toast('Loading Google map…'); await loadGoogle(); }
+  catch (e) { toast('Could not load Google map. Check the internet connection.'); return null; }
+  return L.gridLayer.googleMutant({ type: name === 'groad' ? 'roadmap' : 'hybrid', maxZoom: 21 });
+}
 async function switchLayer(name) {
-  document.querySelectorAll('.layer-switch button').forEach(x => x.classList.toggle('on', x.dataset.layer === name));
-  if ((name === 'groad' || name === 'ghyb') && !layers[name]) {
-    try { toast('Loading Google map…'); await loadGoogle(); }
-    catch (e) { toast('Could not load Google map. Check the internet connection.'); return switchLayer('sat'); }
-    layers[name] = L.gridLayer.googleMutant({ type: name === 'groad' ? 'roadmap' : 'hybrid', maxZoom: 21 });
-  }
+  if (!layers[name]) { const l = await makeBase(name); if (!l) return switchLayer('sat'); layers[name] = l; }
+  mapChoice = name;
+  document.querySelectorAll('#layer-menu .opt').forEach(x => x.classList.toggle('on', x.dataset.layer === name));
   Object.values(layers).forEach(l => map.removeLayer(l));
   layers[name].addTo(map);
 }
-document.querySelectorAll('.layer-switch button').forEach(b => b.onclick = () => switchLayer(b.dataset.layer));
+const showLayerMenu = on => { $('#layer-menu').classList.toggle('hidden', !on); $('#btn-layers').classList.toggle('on', on); };
+$('#btn-layers').onclick = () => showLayerMenu($('#layer-menu').classList.contains('hidden'));
+document.querySelectorAll('#layer-menu .opt').forEach(b => b.onclick = () => { switchLayer(b.dataset.layer); showLayerMenu(false); });
+map.on('click movestart', () => showLayerMenu(false));
 
 const plotLayer = L.layerGroup().addTo(map);
 let selected = null;
@@ -600,13 +633,13 @@ function renderPlaces() {
 }
 map.on('zoomend', renderPlaces);
 // clicks on panels and buttons over the map must not count as map taps
-['.addplace', '#add-banner', '#place-sheet', '#detail', '.layer-switch', '.legend'].forEach(sel => { const el = $(sel); if (el) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); } });
+['.map-tools', '#add-banner', '#place-sheet', '#detail'].forEach(sel => { const el = $(sel); if (el) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); } });
 
 function setAdding(on) {
   addingPlace = on;
   $('#map').classList.toggle('adding', on);
   $('#add-banner').classList.toggle('hidden', !on);
-  $('#add-place').textContent = on ? 'Adding…' : '+ Place name';
+  $('#add-place').classList.toggle('on', on); if (on) showLayerMenu(false);
   if (on) { $('#detail').classList.add('hidden'); document.body.classList.remove('detail-open'); if (isPhone()) setSheet(true); }
 }
 $('#add-place').onclick = () => setAdding(!addingPlace);
@@ -652,7 +685,7 @@ $('#f-place').oninput = e => {
   if (!q) { box.classList.add('hidden'); return; }
   const hits = places.filter(pl => pl.name.toLowerCase().includes(q)).slice(0, 8);
   box.innerHTML = hits.length ? hits.map(pl => `<div data-id="${pl.id}">${esc(pl.name)}<small>${(PTYPES[pl.type] || PTYPES.other)[0]}</small></div>`).join('')
-    : '<div style="color:var(--muted);cursor:default">No place with that name yet. Add it with “+ Place name”.</div>';
+    : '<div style="color:var(--muted);cursor:default">No place with that name yet. Add it with the pin button on the map.</div>';
   box.classList.remove('hidden');
 };
 $('#place-results').onclick = e => {
@@ -899,12 +932,25 @@ function addPhoto(i, file) {
   img.src = url;
 }
 
+let capBase = null;
 function initCapMap(result) {
   const el = $('#cap-map'); if (!el) return;
+  el.insertAdjacentHTML('beforebegin', '<div class="chips" id="cap-layers">' + Object.keys(MAP_NAMES).map(k => `<button class="chip" data-cl="${k}">${MAP_NAMES[k]}</button>`).join('') + '</div>');
   capMap = L.map(el, { zoomControl: true, attributionControl: false }).setView([9.3462, 42.7865], 17);
-  satLayer().addTo(capMap);
+  capBase = null;
+  setCapBase(mapChoice);
+  document.querySelectorAll('#cap-layers [data-cl]').forEach(b => b.onclick = () => setCapBase(b.dataset.cl));
   capLayer = L.layerGroup().addTo(capMap);
   drawCapMap(result);
+}
+async function setCapBase(name) {
+  const m = capMap; if (!m) return;
+  const l = await makeBase(name);
+  if (capMap !== m) return;                          // user left this step meanwhile
+  if (!l) return setCapBase('sat');
+  if (capBase) m.removeLayer(capBase);
+  capBase = l.addTo(m); mapChoice = name;
+  document.querySelectorAll('#cap-layers [data-cl]').forEach(x => x.classList.toggle('on', x.dataset.cl === name));
 }
 
 function drawCapMap(result) {
@@ -970,7 +1016,7 @@ function renderManage() {
         <button class="btn danger" data-del>Delete</button>
       </div>`).join('')}</div>
     <h2 style="margin-top:26px">Place names</h2>
-    <p class="lead">Names your team added to the map. Add new ones on the map with “+ Place name”.</p>
+    <p class="lead">Names your team added to the map. Add new ones with the pin button on the map.</p>
     <div id="plist">${places.length ? places.slice().sort((a, b) => a.name.localeCompare(b.name)).map(pl => `
       <div class="mrow" style="grid-template-columns:1fr auto auto">
         <div class="t"><b>${esc(pl.name)}</b><span>${(PTYPES[pl.type] || PTYPES.other)[0]}</span></div>
