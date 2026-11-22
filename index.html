@@ -841,6 +841,26 @@ table.sides td:last-child{text-align:right;font-weight:700}
   .demo-badge{font-size:11px}
 }
 .grab{display:none}
+/* place names */
+.pl{width:max-content;white-space:nowrap;font-weight:800;font-size:12.5px;color:#fff;text-shadow:0 1px 3px #000,0 0 2px #000,0 0 6px rgba(0,0,0,.8);display:inline-flex;align-items:center;gap:5px;transform:translate(-6px,-50%);pointer-events:auto;cursor:pointer}
+.pl i{width:10px;height:10px;border-radius:50%;border:2px solid #fff;flex:none;box-shadow:0 0 3px #000}
+.pl.area{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--sand-2);transform:translate(-50%,-50%)}
+.pl.area i{display:none}
+.pl-icon{background:none!important;border:0!important}
+.addplace{position:absolute;left:12px;bottom:70px;z-index:500}
+.addplace .btn{box-shadow:var(--shadow);padding:10px 14px}
+.addbanner{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:650;background:var(--sand);color:var(--ink);font-weight:800;padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center;white-space:nowrap}
+.addbanner{pointer-events:none}.addbanner button{pointer-events:auto;border:0;background:var(--ink);color:#fff;border-radius:8px;padding:6px 10px;font-weight:800;cursor:pointer}
+#map.adding{cursor:crosshair}#map.adding .leaflet-container{cursor:crosshair}
+.sheet{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,92%);z-index:900;background:var(--ink-2);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);display:grid;gap:12px}
+.sheet h3{margin:0;font-size:18px}
+.types{display:flex;flex-wrap:wrap;gap:6px}
+.place-search{position:relative}
+#place-results{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--ink);border:1px solid var(--line);border-radius:12px;z-index:20;max-height:240px;overflow:auto}
+#place-results div{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line);font-size:14px}
+#place-results div:hover{background:var(--ink-3)}
+#place-results small{color:var(--muted);margin-left:6px}
+@media (max-width:820px){.addplace{bottom:auto;top:52px;left:12px}.addbanner{top:100px;white-space:normal;width:90%}}
 @media (min-width:821px){.mobile-only{display:none!important}}
 </style>
 </head>
@@ -866,6 +886,7 @@ table.sides td:last-child{text-align:right;font-weight:700}
       <div class="grab" id="grab"></div>
       <div class="filters">
         <h2>Find land in Jijiga</h2>
+        <div class="field place-search"><input type="text" id="f-place" placeholder="Search a place: mosque, school, market…" autocomplete="off"><div id="place-results" class="hidden"></div></div>
         <div class="row">
           <div class="field" style="flex:1"><label>Area</label><select id="f-area"></select></div>
           <div class="field" style="flex:1"><label>Max budget (Birr)</label><input id="f-budget" type="number" inputmode="numeric" placeholder="Any"></div>
@@ -883,6 +904,9 @@ table.sides td:last-child{text-align:right;font-weight:700}
     <div id="map">
       <div class="layer-switch"><button data-layer="sat" class="on">Satellite</button><button data-layer="street">Streets</button></div>
       <div class="legend"><span><i style="border-color:#fff"></i>For sale</span><span><i style="border-color:var(--res)"></i>Reserved</span><span><i style="border-color:var(--sold);border-style:dashed"></i>Sold</span><span><i style="border-color:var(--sand);border-width:0 0 3px"></i>Road side</span></div>
+      <div class="addplace"><button class="btn primary" id="add-place">+ Place name</button></div>
+      <div class="addbanner hidden" id="add-banner">Tap the map where the place is <button id="add-cancel">Cancel</button></div>
+      <div class="sheet hidden" id="place-sheet"></div>
       <div id="detail" class="hidden"></div>
     </div>
   </section>
@@ -1227,7 +1251,7 @@ function renderMap(fit) {
   for (const k in shapes) delete shapes[k];
   list.forEach(p => {
     const poly = L.polygon(p.fitted, styleFor(p, selected === p.id)).addTo(plotLayer);
-    poly.on('click', () => select(p.id, false));
+    poly.on('click', e => { if (addingPlace) { placeAt(e.latlng); return; } select(p.id, false); });
     const tag = L.tooltip({ permanent: true, direction: 'center', className: 'price-tag', opacity: 1 })
       .setContent(p.status === 'sold' ? 'Sold' : shortBirr(p.price));
     poly.bindTooltip(tag);
@@ -1315,6 +1339,97 @@ function renderDetail(p) {
   d.querySelector('#d-zoom').onclick = () => map.flyToBounds(L.latLngBounds(p.fitted), Object.assign({ maxZoom: 20 }, flyPad()));
   d.querySelector('#d-status').onchange = e => { p.status = e.target.value; save(); renderMap(); renderDetail(p); toast('Marked as ' + STATUS_TEXT[p.status]); };
 }
+
+/* =====================================================================
+   PLACE NAMES (KODH's own labels: mosques, schools, markets, areas…)
+   ===================================================================== */
+const PSTORE = 'kodh.places.v1';
+const PTYPES = { mosque: ['Mosque', '#22c55e'], school: ['School', '#60a5fa'], market: ['Market / shops', '#f5a524'],
+  health: ['Hospital / clinic', '#ef4444'], hotel: ['Hotel / restaurant', '#c084fc'], office: ['Office / government', '#94a3b8'],
+  road: ['Road name', '#e3b56b'], area: ['Area / neighbourhood', '#f3d39c'], other: ['Other', '#ffffff'] };
+let places = [];
+try { places = JSON.parse(localStorage.getItem(PSTORE) || '[]'); } catch (e) { places = []; }
+const savePlaces = () => { try { localStorage.setItem(PSTORE, JSON.stringify(places)); } catch (e) { toast('Could not save on this device.'); } };
+const placeLayer = L.layerGroup().addTo(map);
+let addingPlace = false;
+
+function renderPlaces() {
+  placeLayer.clearLayers();
+  const z = map.getZoom();
+  places.forEach(pl => {
+    const isArea = pl.type === 'area';
+    if (z < (isArea ? 13 : 15)) return;
+    const col = (PTYPES[pl.type] || PTYPES.other)[1];
+    const icon = L.divIcon({ className: 'pl-icon', iconSize: [0, 0],
+      html: `<div class="pl ${isArea ? 'area' : ''}"><i style="background:${col}"></i>${esc(pl.name)}</div>` });
+    L.marker([pl.lat, pl.lng], { icon, keyboard: false, zIndexOffset: isArea ? -100 : 100 })
+      .on('click', () => openPlaceSheet(pl)).addTo(placeLayer);
+  });
+}
+map.on('zoomend', renderPlaces);
+// clicks on panels and buttons over the map must not count as map taps
+['.addplace', '#add-banner', '#place-sheet', '#detail', '.layer-switch', '.legend'].forEach(sel => { const el = $(sel); if (el) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); } });
+
+function setAdding(on) {
+  addingPlace = on;
+  $('#map').classList.toggle('adding', on);
+  $('#add-banner').classList.toggle('hidden', !on);
+  $('#add-place').textContent = on ? 'Adding…' : '+ Place name';
+  if (on) { $('#detail').classList.add('hidden'); document.body.classList.remove('detail-open'); if (isPhone()) setSheet(true); }
+}
+$('#add-place').onclick = () => setAdding(!addingPlace);
+$('#add-cancel').onclick = () => setAdding(false);
+map.on('click', e => { if (addingPlace) placeAt(e.latlng); });
+
+function placeAt(latlng) {
+  setAdding(false);
+  if (map.getZoom() < 16) map.setView(latlng, 17);
+  openPlaceSheet({ id: null, name: '', type: 'mosque', lat: latlng.lat, lng: latlng.lng });
+}
+
+function openPlaceSheet(pl) {
+  const sh = $('#place-sheet'); sh.classList.remove('hidden');
+  const isNew = !pl.id; let type = pl.type;
+  sh.innerHTML = `<h3>${isNew ? 'Name this place' : 'Place name'}</h3>
+    <input type="text" id="pl-name" placeholder="e.g. Al-Furqan Mosque" value="${esc(pl.name)}" maxlength="60">
+    <div class="types">${Object.keys(PTYPES).map(k => `<button class="chip ${k === type ? 'on' : ''}" data-t="${k}">${PTYPES[k][0]}</button>`).join('')}</div>
+    <div class="btns">${isNew ? '' : '<button class="btn danger" id="pl-del">Delete</button>'}<button class="btn ghost" id="pl-cancel">Cancel</button><button class="btn primary" id="pl-save">Save</button></div>`;
+  sh.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { type = b.dataset.t; sh.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
+  const close = () => sh.classList.add('hidden');
+  sh.querySelector('#pl-cancel').onclick = close;
+  sh.querySelector('#pl-save').onclick = () => {
+    const name = sh.querySelector('#pl-name').value.trim();
+    if (!name) { toast('Type the name first'); return; }
+    if (isNew) places.push({ id: 'pl' + Date.now().toString(36), name, type, lat: pl.lat, lng: pl.lng, created: Date.now() });
+    else Object.assign(places.find(x => x.id === pl.id), { name, type });
+    savePlaces(); renderPlaces(); close(); toast(isNew ? 'Place added' : 'Place updated');
+  };
+  if (!isNew) {
+    const del = sh.querySelector('#pl-del');
+    del.onclick = () => {
+      if (!del.dataset.armed) { del.dataset.armed = 1; del.textContent = 'Sure?'; return; }
+      places = places.filter(x => x.id !== pl.id); savePlaces(); renderPlaces(); close(); toast('Place deleted');
+    };
+  }
+  setTimeout(() => sh.querySelector('#pl-name').focus(), 50);
+}
+
+// search place names (also matches plot titles and areas)
+$('#f-place').oninput = e => {
+  const q = e.target.value.trim().toLowerCase(), box = $('#place-results');
+  if (!q) { box.classList.add('hidden'); return; }
+  const hits = places.filter(pl => pl.name.toLowerCase().includes(q)).slice(0, 8);
+  box.innerHTML = hits.length ? hits.map(pl => `<div data-id="${pl.id}">${esc(pl.name)}<small>${(PTYPES[pl.type] || PTYPES.other)[0]}</small></div>`).join('')
+    : '<div style="color:var(--muted);cursor:default">No place with that name yet. Add it with “+ Place name”.</div>';
+  box.classList.remove('hidden');
+};
+$('#place-results').onclick = e => {
+  const d = e.target.closest('[data-id]'); if (!d) return;
+  const pl = places.find(x => x.id === d.dataset.id);
+  $('#place-results').classList.add('hidden'); $('#f-place').value = pl.name;
+  if (isPhone()) setSheet(true);
+  map.flyTo([pl.lat, pl.lng], 17, { duration: .8 });
+};
 
 /* =====================================================================
    ADD PLOT (capture)
@@ -1622,6 +1737,14 @@ function renderManage() {
         <button class="btn ghost" data-view-plot>View</button>
         <button class="btn danger" data-del>Delete</button>
       </div>`).join('')}</div>
+    <h2 style="margin-top:26px">Place names</h2>
+    <p class="lead">Names your team added to the map. Add new ones on the map with “+ Place name”.</p>
+    <div id="plist">${places.length ? places.slice().sort((a, b) => a.name.localeCompare(b.name)).map(pl => `
+      <div class="mrow" style="grid-template-columns:1fr auto auto">
+        <div class="t"><b>${esc(pl.name)}</b><span>${(PTYPES[pl.type] || PTYPES.other)[0]}</span></div>
+        <button class="btn ghost" data-pl-view="${pl.id}">View</button>
+        <button class="btn danger" data-pl-del="${pl.id}">Delete</button>
+      </div>`).join('') : '<div class="note">No place names yet.</div>'}</div>
     <div class="panel" style="margin-top:18px">
       <div class="btns">
         <button class="btn ghost" id="copy">Copy all data</button>
@@ -1630,7 +1753,7 @@ function renderManage() {
       </div>
       <div class="note">For now, plots are saved on this phone or computer only. The next step is a shared online database so every agent sees the same plots.</div>
     </div>`;
-  el.querySelectorAll('.mrow').forEach(row => {
+  el.querySelectorAll('#mlist .mrow').forEach(row => {
     const p = plots.find(x => x.id === row.dataset.id);
     row.querySelector('[data-price]').onchange = e => { p.price = Math.max(0, Math.round(+e.target.value || 0)); save(); toast('Price updated'); };
     row.querySelector('[data-status]').onchange = e => { p.status = e.target.value; save(); renderManage(); toast('Marked as ' + STATUS_TEXT[p.status]); };
@@ -1641,8 +1764,13 @@ function renderManage() {
       else { del.dataset.armed = 1; del.textContent = 'Sure?'; setTimeout(() => { del.textContent = 'Delete'; delete del.dataset.armed; }, 3000); }
     };
   });
+  el.querySelectorAll('[data-pl-view]').forEach(b => b.onclick = () => { const pl = places.find(x => x.id === b.dataset.plView); show('map'); setTimeout(() => map.flyTo([pl.lat, pl.lng], 17), 60); });
+  el.querySelectorAll('[data-pl-del]').forEach(b => b.onclick = () => {
+    if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = 'Sure?'; return; }
+    places = places.filter(x => x.id !== b.dataset.plDel); savePlaces(); renderPlaces(); renderManage(); toast('Place deleted');
+  });
   $('#copy').onclick = async () => {
-    try { await navigator.clipboard.writeText(JSON.stringify(plots.map(p => Object.assign({}, p, { corners: p.corners.map(c => Object.assign({}, c, { photo: c.photo ? '[photo]' : null })) })), null, 1)); toast('Copied'); }
+    try { await navigator.clipboard.writeText(JSON.stringify({ plots: plots.map(p => Object.assign({}, p, { corners: p.corners.map(c => Object.assign({}, c, { photo: c.photo ? '[photo]' : null })) })), places }, null, 1)); toast('Copied'); }
     catch (e) { toast('Copy was blocked by the browser'); }
   };
   $('#clear-demo').onclick = () => { plots = plots.filter(p => !p.demo); save(); renderManage(); toast('Examples removed'); };
@@ -1655,6 +1783,7 @@ function renderManage() {
 
 /* ---------------- start ---------------- */
 renderMap(true);
+renderPlaces();
 if (isPhone()) setSheet(true);
 </script>
 </body>
