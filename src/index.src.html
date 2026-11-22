@@ -192,6 +192,73 @@ table.sides td:last-child{text-align:right;font-weight:700}
 .opt b{font-size:14px}.opt span{font-size:12px;color:var(--muted)}
 .lg{display:flex;align-items:center;gap:8px;font-size:13px;padding:1px 2px}.lg i{width:16px;height:10px;border-radius:2px;border:2px solid;flex:none}
 @media (min-width:821px){body.detail-open .map-tools{right:404px}}
+/* ---------- TV presentation ---------- */
+.tv-btn{margin-left:auto;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--ink-3);color:var(--text);font-weight:800;padding:8px 12px;border-radius:10px;cursor:pointer}
+.tv-btn svg{width:18px;height:18px}
+.tv-btn + .demo-badge{margin-left:0}
+.tv-only{display:none!important}
+body.tv header, body.tv nav.bottom, body.tv #side, body.tv #detail, body.tv .map-tools, body.tv #place-sheet, body.tv #add-banner{display:none!important}
+body.tv main{top:0!important;bottom:0!important}
+body.tv #view-map{display:block}
+body.tv #map{position:absolute;inset:0}
+body.tv .tv-only{display:flex!important}
+body.tv.spot .leaflet-tile-pane{filter:brightness(.62) saturate(.9)}
+.tv-fade{transition:opacity .35s}
+body.tv.idle .tv-fade{opacity:0;pointer-events:none}
+body.tv.idle #map{cursor:none}
+#tv-top{position:absolute;top:16px;left:16px;right:16px;z-index:800;align-items:center;gap:10px}
+#tv-top .grow{flex:1}
+.tvb{border:1px solid var(--line);background:rgba(15,23,32,.88);color:#fff;font-weight:800;font-size:16px;border-radius:12px;padding:11px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.tvb.on{background:var(--sand);color:var(--ink);border-color:var(--sand)}
+.tvb.icon{padding:11px 14px;font-size:18px}
+#tv-count{font-size:18px;font-weight:800;background:rgba(15,23,32,.88);border:1px solid var(--line);border-radius:12px;padding:10px 16px;white-space:nowrap}
+#tv-count small{color:var(--sand-2);font-weight:700;margin-left:8px}
+.tv-maps{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(15,23,32,.88)}
+.tv-maps button{border:0;background:none;color:var(--muted);font-weight:800;font-size:15px;padding:11px 14px;cursor:pointer}
+.tv-maps button.on{background:var(--sand);color:var(--ink)}
+#tv-panel{position:absolute;left:16px;top:84px;z-index:790;width:270px;flex-direction:column;gap:14px;background:rgba(15,23,32,.9);border:1px solid var(--line);border-radius:18px;padding:16px;max-height:calc(100% - 340px);overflow:auto}
+#tv-panel h5{margin:0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+#tv-panel .chips .chip{font-size:15px;padding:8px 13px}
+#tv-panel input{font-size:16px}
+#tv-panel .check{font-size:15px}
+#tv-presults{background:var(--ink);border:1px solid var(--line);border-radius:12px;max-height:200px;overflow:auto}
+#tv-presults div{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line);font-size:15px}
+#tv-card{position:absolute;left:16px;right:16px;bottom:16px;z-index:800;background:rgba(15,23,32,.94);border:1px solid var(--line);border-radius:22px;padding:18px 22px;gap:22px;align-items:center;box-shadow:var(--shadow)}
+#tv-card.empty{justify-content:center;color:var(--muted);font-size:18px}
+#tv-card .main{display:grid;gap:6px;min-width:250px}
+#tv-card .price{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1.05}
+#tv-card .where{font-size:17px;color:var(--muted)}
+#tv-card .facts{display:grid;grid-template-columns:repeat(4,auto);gap:10px 26px}
+#tv-card .facts b{display:block;font-size:24px}
+#tv-card .facts span{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+#tv-card .ph{display:flex;gap:10px;margin-left:auto}
+#tv-card .ph div{width:120px;height:90px;border-radius:12px;background:var(--ink) center/cover;border:1px solid var(--line);position:relative;cursor:pointer}
+#tv-card .ph div b{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.6);border-radius:6px;padding:1px 7px;font-size:13px}
+.tv-len{background:rgba(15,23,32,.9);color:#fff;font-weight:800;font-size:15px;padding:3px 9px;border-radius:8px;white-space:nowrap;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.25);width:max-content}
+.tv-len.road{background:var(--sand);color:var(--ink);border-color:var(--sand)}
+#tv-light{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.92);display:grid;place-items:center;cursor:zoom-out}
+#tv-light img{max-width:92vw;max-height:90vh;border-radius:12px}
+#tv-light b{position:absolute;top:20px;left:24px;font-size:22px}
+body.tv .leaflet-control-attribution{opacity:.6}
+body.tv .price-tag{font-size:14px!important;padding:3px 9px!important}
+@media (max-width:820px){
+  .tv-btn span{display:none}
+  #tv-top{flex-wrap:wrap;top:10px;left:10px;right:10px;gap:8px}
+  #tv-top .grow,#tv-full{display:none!important}
+  body.tv #tv-top{display:grid!important;grid-template-columns:auto auto 1fr auto;align-items:stretch}
+  #tv-count{font-size:14px;padding:7px 10px;white-space:normal;min-width:0}
+  #tv-count small{display:block;margin:1px 0 0;font-size:12px}
+  #tv-exit{grid-column:4;grid-row:1}#tv-filters{grid-column:1/3;grid-row:2;justify-content:center}#tv-maps{grid-column:3/5;grid-row:2}#tv-maps button{flex:1}
+  #tv-panel{left:10px;right:10px;width:auto;top:auto;bottom:200px;max-height:40%}
+  body.tv:not(.panel-open) #tv-panel{display:none!important}
+  #tv-card{left:10px;right:10px;bottom:10px;flex-wrap:wrap;padding:14px;gap:12px}
+  #tv-card .price{font-size:28px}
+  #tv-card .facts{grid-template-columns:repeat(2,auto)}
+  #tv-card .facts b{font-size:18px}
+  #tv-card .ph{margin-left:0}#tv-card .ph div{width:70px;height:54px}
+  .tvb{font-size:14px;padding:9px 12px}.tv-maps button{font-size:13px;padding:9px 10px}
+}
+@media (min-width:821px){#tv-filters{display:none!important}}
 /* place names */
 .pl{width:max-content;white-space:nowrap;font-weight:800;font-size:12.5px;color:#fff;text-shadow:0 1px 3px #000,0 0 2px #000,0 0 6px rgba(0,0,0,.8);display:inline-flex;align-items:center;gap:5px;transform:translate(-6px,-50%);pointer-events:auto;cursor:pointer}
 .pl i{width:10px;height:10px;border-radius:50%;border:2px solid #fff;flex:none;box-shadow:0 0 3px #000}
@@ -227,6 +294,7 @@ table.sides td:last-child{text-align:right;font-weight:700}
     <button class="tab" data-view="capture">Add plot</button>
     <button class="tab" data-view="manage">Manage</button>
   </div>
+  <button class="tv-btn" id="tv-btn" title="TV presentation for buyers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>TV mode</span></button>
   <div class="demo-badge" title="Plots shown are made-up examples until real ones are captured">Demo data</div>
 </header>
 
@@ -271,7 +339,25 @@ table.sides td:last-child{text-align:right;font-weight:700}
       <div class="addbanner hidden" id="add-banner">Tap the map where the place is <button id="add-cancel">Cancel</button></div>
       <div class="sheet hidden" id="place-sheet"></div>
       <div id="detail" class="hidden"></div>
-    </div>
+      <!-- TV presentation overlays -->
+      <div id="tv-top" class="tv-only tv-fade">
+        <button class="tvb icon" id="tv-prev" title="Previous plot (←)">◀</button>
+        <button class="tvb icon" id="tv-next" title="Next plot (→)">▶</button>
+        <div id="tv-count"></div>
+        <button class="tvb" id="tv-filters">Filters</button>
+        <div class="grow"></div>
+        <div class="tv-maps" id="tv-maps"><button data-layer="sat">New satellite</button><button data-layer="groad">Google</button><button data-layer="ghyb">Google sat.</button></div>
+        <button class="tvb icon" id="tv-full" title="Full screen">⛶</button>
+        <button class="tvb" id="tv-exit" title="Exit (Esc)">✕ Exit</button>
+      </div>
+      <div id="tv-panel" class="tv-only tv-fade">
+        <h5>Areas</h5><div class="chips" id="tv-areas"></div>
+        <h5>Budget</h5><div class="chips" id="tv-budgets"></div>
+        <h5>Find a place</h5>
+        <div><input type="text" id="tv-place" placeholder="Mosque, school, market…" autocomplete="off"><div id="tv-presults" class="hidden"></div></div>
+        <label class="check"><input type="checkbox" id="tv-sold"> Show sold plots</label>
+      </div>
+      <div id="tv-card" class="tv-only"></div>
   </section>
 
   <!-- ================= CAPTURE ================= -->
@@ -393,11 +479,11 @@ document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => show(b.d
 function satLayer() {
   return L.layerGroup([
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 20, maxNativeZoom: 18, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' }),
+      { maxZoom: 21, maxNativeZoom: 18, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' }),
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 20, maxNativeZoom: 18, opacity: .85 }),
+      { maxZoom: 21, maxNativeZoom: 18, opacity: .85 }),
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 20, maxNativeZoom: 18, opacity: .7 })
+      { maxZoom: 21, maxNativeZoom: 18, opacity: .7 })
   ]);
 }
 function streetLayer() {
@@ -408,7 +494,7 @@ function streetLayer() {
 /* =====================================================================
    BUYER MAP
    ===================================================================== */
-const map = L.map('map', { zoomControl: false, attributionControl: true }).setView(JIJIGA, 14);
+const map = L.map('map', { zoomControl: false, attributionControl: true, maxZoom: 21 }).setView(JIJIGA, 14);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 const layers = { sat: satLayer() };
 layers.sat.addTo(map);
@@ -478,6 +564,7 @@ const flyPad = () => isPhone() ? { paddingTopLeft: [30, 70], paddingBottomRight:
 $('#grab').onclick = toggleSheet; $('#list-toggle').onclick = toggleSheet;
 
 function styleFor(p, isSel) {
+  if (tvOn && selected && !isSel) return { color: '#ffffff', weight: 1.5, opacity: .45, fillColor: '#ffffff', fillOpacity: .04, dashArray: p.status === 'sold' ? '5 5' : null };
   if (isSel) return { color: '#ef4444', weight: 3.5, fillColor: '#ef4444', fillOpacity: .28, dashArray: null };
   if (p.status === 'sold') return { color: '#8b97a3', weight: 2, fillColor: '#8b97a3', fillOpacity: .12, dashArray: '5 5' };
   if (p.status === 'reserved') return { color: '#f5a524', weight: 2.5, fillColor: '#f5a524', fillOpacity: .12, dashArray: null };
@@ -516,7 +603,7 @@ function renderMap(fit) {
   for (const k in shapes) delete shapes[k];
   list.forEach(p => {
     const poly = L.polygon(p.fitted, styleFor(p, selected === p.id)).addTo(plotLayer);
-    poly.on('click', e => { if (addingPlace) { placeAt(e.latlng); return; } select(p.id, false); });
+    poly.on('click', e => { L.DomEvent.stopPropagation(e); if (addingPlace) { placeAt(e.latlng); return; } select(p.id, false); if (tvOn) tvUpdateTop(); });
     const tag = L.tooltip({ permanent: true, direction: 'center', className: 'price-tag', opacity: 1 })
       .setContent(p.status === 'sold' ? 'Sold' : shortBirr(p.price));
     poly.bindTooltip(tag);
@@ -543,7 +630,7 @@ $('#results').onmouseover = e => {
 };
 
 function updateTags() {
-  const showTags = map.getZoom() >= 16;
+  const showTags = map.getZoom() >= 16 && !(tvOn && selected);
   Object.values(shapes).forEach(s => { if (showTags) s.poly.openTooltip(); else s.poly.closeTooltip(); });
 }
 map.on('zoomend', updateTags);
@@ -558,7 +645,8 @@ function select(id, fly) {
   });
   document.querySelectorAll('#results .card').forEach(c => c.classList.toggle('on', c.dataset.id === id));
   if (!p) return;
-  if (fly) map.flyToBounds(L.latLngBounds(p.fitted), Object.assign({ maxZoom: 19, duration: .8 }, flyPad()));
+  if (fly) map.flyToBounds(L.latLngBounds(p.fitted), Object.assign({ maxZoom: tvOn ? 21 : 19, duration: .8 }, tvOn ? tvPad() : flyPad()));
+  if (tvOn) { renderTvCard(p); return; }
   renderDetail(p);
   if (isPhone()) setSheet(true);
 }
@@ -1058,6 +1146,185 @@ function renderManage() {
     plots = demoPlots(); save(); renderManage(); toast('Reset to examples');
   };
 }
+
+/* =====================================================================
+   TV PRESENTATION — for showing land to buyers on a big screen.
+   Hides all agent/admin things; never shows seller names or phones.
+   ===================================================================== */
+let tvOn = false, tvSaved = null, tvIdleTimer = null, tvFullByUs = false;
+const tvLayer = L.layerGroup();
+const tvPad = () => isPhone() ? { paddingTopLeft: [30, 110], paddingBottomRight: [30, 260] } : { paddingTopLeft: [320, 110], paddingBottomRight: [60, 220] };
+
+function enterTv() {
+  tvSaved = { filt: Object.assign({}, filt), center: map.getCenter(), zoom: map.getZoom(), selected, view: currentView, layer: mapChoice };
+  tvOn = true;
+  show('map');
+  document.body.classList.add('tv');
+  document.body.classList.remove('detail-open');
+  tvLayer.addTo(map);
+  const el = document.documentElement;
+  if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().then(() => { tvFullByUs = true; }).catch(() => {});
+  setTimeout(() => { map.invalidateSize(); tvRender(true); }, 120);
+  tvWake();
+}
+
+function exitTv() {
+  if (!tvOn) return;
+  tvOn = false;
+  document.body.classList.remove('tv', 'spot', 'idle', 'panel-open');
+  map.removeLayer(tvLayer); tvLayer.clearLayers();
+  clearTimeout(tvIdleTimer);
+  if (document.fullscreenElement && document.exitFullscreen) { tvFullByUs = false; document.exitFullscreen().catch(() => {}); }
+  const sv = tvSaved; tvSaved = null;
+  if (sv) {
+    Object.assign(filt, sv.filt);
+    $('#f-budget').value = filt.budget || ''; $('#f-size').value = filt.size || ''; $('#f-sold').checked = filt.sold;
+    selected = sv.selected;
+    if (sv.layer !== mapChoice) switchLayer(sv.layer);
+  }
+  setTimeout(() => {
+    map.invalidateSize();
+    if (sv) map.setView(sv.center, sv.zoom, { animate: false });
+    renderMap();
+    const p = plots.find(x => x.id === selected);
+    if (p) select(p.id, false); else $('#detail').classList.add('hidden');
+    if (sv && sv.view !== 'map') show(sv.view);
+  }, 120);
+}
+
+$('#tv-btn').onclick = enterTv;
+$('#tv-exit').onclick = exitTv;
+$('#tv-full').onclick = () => {
+  if (document.fullscreenElement) { tvFullByUs = false; document.exitFullscreen().catch(() => {}); }
+  else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().then(() => { tvFullByUs = true; }).catch(() => toast('Full screen is not allowed here'));
+};
+// Esc leaves full screen first (browser rule); treat that as "exit TV mode"
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && tvOn && tvFullByUs) { tvFullByUs = false; exitTv(); } });
+
+// controls fade after 4 s without mouse / touch
+function tvWake() {
+  if (!tvOn) return;
+  document.body.classList.remove('idle');
+  clearTimeout(tvIdleTimer);
+  tvIdleTimer = setTimeout(() => { if (tvOn && !document.activeElement.matches('input')) document.body.classList.add('idle'); }, 4000);
+}
+['mousemove', 'mousedown', 'touchstart', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, tvWake, { passive: true }));
+
+document.addEventListener('keydown', e => {
+  if (!tvOn || e.target.matches('input, textarea, select')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); tvStep(1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); tvStep(-1); }
+  else if (e.key === 'Escape') exitTv();
+  else if (e.key.toLowerCase() === 'm') { const order = ['sat', 'groad', 'ghyb']; tvMap(order[(order.indexOf(mapChoice) + 1) % 3]); }
+});
+
+function tvList() { return visiblePlots(); }
+
+function tvStep(dir) {
+  const list = tvList(); if (!list.length) return;
+  let i = list.findIndex(p => p.id === selected);
+  i = i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length;
+  select(list[i].id, true);
+  tvUpdateTop();
+}
+$('#tv-prev').onclick = () => tvStep(-1);
+$('#tv-next').onclick = () => tvStep(1);
+$('#tv-filters').onclick = () => document.body.classList.toggle('panel-open');
+
+async function tvMap(name) { await switchLayer(name); tvUpdateTop(); }
+document.querySelectorAll('#tv-maps button').forEach(b => b.onclick = () => tvMap(b.dataset.layer));
+
+function tvUpdateTop() {
+  const list = tvList(), i = list.findIndex(p => p.id === selected);
+  const prices = list.map(p => p.price);
+  const range = prices.length ? shortBirr(Math.min(...prices)) + '–' + shortBirr(Math.max(...prices)) + ' Br' : '';
+  $('#tv-count').innerHTML = (i >= 0 ? `Plot ${i + 1} of ${list.length}` : `${list.length} plot${list.length === 1 ? '' : 's'}`) +
+    `<small>${esc(filt.area || 'All areas')}${range ? ' · ' + range : ''}</small>`;
+  document.querySelectorAll('#tv-maps button').forEach(b => b.classList.toggle('on', b.dataset.layer === mapChoice));
+}
+
+function tvRender(fit) {
+  const areas = [...new Set(plots.map(p => p.area).filter(Boolean))].sort();
+  $('#tv-areas').innerHTML = ['', ...areas].map(a => `<button class="chip ${filt.area === a ? 'on' : ''}" data-a="${esc(a)}">${a ? esc(a) : 'All'}</button>`).join('');
+  $('#tv-budgets').innerHTML = [0, ...BUDGETS].map(b => `<button class="chip ${filt.budget === b ? 'on' : ''}" data-b="${b}">${b ? '≤ ' + shortBirr(b) : 'Any'}</button>`).join('');
+  $('#tv-sold').checked = filt.sold;
+  if (selected && !tvList().some(p => p.id === selected)) selected = null;
+  renderMap(fit);
+  const p = plots.find(x => x.id === selected);
+  if (p) { Object.keys(shapes).forEach(k => shapes[k].poly.setStyle(styleFor(plots.find(x => x.id === k), k === selected))); renderTvCard(p); }
+  else renderTvCard(null);
+  tvUpdateTop();
+}
+$('#tv-areas').onclick = e => { const c = e.target.closest('[data-a]'); if (!c) return; filt.area = c.dataset.a; selected = null; tvRender(true); };
+$('#tv-budgets').onclick = e => { const c = e.target.closest('[data-b]'); if (!c) return; filt.budget = +c.dataset.b; selected = null; tvRender(true); };
+$('#tv-sold').onchange = e => { filt.sold = e.target.checked; tvRender(false); };
+$('#tv-place').oninput = e => {
+  const q = e.target.value.trim().toLowerCase(), box = $('#tv-presults');
+  if (!q) { box.classList.add('hidden'); return; }
+  const hits = places.filter(pl => pl.name.toLowerCase().includes(q)).slice(0, 6);
+  box.innerHTML = hits.length ? hits.map(pl => `<div data-id="${pl.id}">${esc(pl.name)}</div>`).join('') : '<div style="color:var(--muted)">No place with that name yet</div>';
+  box.classList.remove('hidden');
+};
+$('#tv-presults').onclick = e => {
+  const d = e.target.closest('[data-id]'); if (!d) return;
+  const pl = places.find(x => x.id === d.dataset.id);
+  $('#tv-presults').classList.add('hidden'); $('#tv-place').value = pl.name; $('#tv-place').blur();
+  map.flyTo([pl.lat, pl.lng], 17, { duration: .9 });
+};
+
+// side lengths written on the plot
+function tvDrawLengths(p) {
+  tvLayer.clearLayers();
+  if (!p) return;
+  const f = KGeo.makeFrame(p.fitted), xy = p.fitted.map(f.toXY);
+  const c = xy.reduce((a, q) => [a[0] + q[0] / 4, a[1] + q[1] / 4], [0, 0]);
+  const calc = KGeo.sideLengthsLatLng(p.fitted);
+  SIDES.forEach((k, i) => {
+    const a = xy[i], b = xy[(i + 1) % 4];
+    const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const d = Math.hypot(m[0] - c[0], m[1] - c[1]) || 1;
+    const out = [m[0] + (m[0] - c[0]) / d * 3.5, m[1] + (m[1] - c[1]) / d * 3.5];   // 3.5 m outside the edge
+    const len = (p.sides && p.sides[k]) || calc[i];
+    const isRoad = p.road === k;
+    L.marker(f.toLL(out), { interactive: false, keyboard: false,
+      icon: L.divIcon({ className: 'pl-icon', iconSize: [0, 0], html: `<div class="tv-len ${isRoad ? 'road' : ''}">${len.toFixed(1)} m${isRoad ? ' · ROAD' : ''}</div>` }) }).addTo(tvLayer);
+  });
+}
+
+function renderTvCard(p) {
+  const card = $('#tv-card');
+  document.body.classList.toggle('spot', !!p);
+  updateTags();
+  tvDrawLengths(p);
+  if (!p) {
+    card.className = 'tv-only empty';
+    card.innerHTML = 'Tap a plot, or press ▶ to start the tour';
+    return;
+  }
+  card.className = 'tv-only';
+  const photos = p.corners.map((x, i) => x.photo ? `<div data-ph="${i}" style="background-image:url(${x.photo})"><b>${'ABCD'[i]}</b></div>` : '').join('');
+  card.innerHTML = `
+    <div class="main">
+      <div class="price">${fmtBirr(p.price)}</div>
+      <div class="where">${esc(p.title)} · ${esc(p.area)}, Jijiga ${p.status !== 'sale' ? `<span class="pill ${p.status}" style="margin-left:8px">${STATUS_TEXT[p.status]}</span>` : ''}</div>
+    </div>
+    <div class="facts">
+      <div><b>${m2(p.areaM2)}</b><span>Land size</span></div>
+      <div><b>${dims(p) || '—'}</b><span>About</span></div>
+      <div><b>${Math.round(p.price / p.areaM2).toLocaleString('en-US')} Br</b><span>Per m²</span></div>
+      <div><b>${p.road ? 'Side ' + sideName(p.road) : 'None'}</b><span>Faces road</span></div>
+    </div>
+    ${photos ? `<div class="ph">${photos}</div>` : ''}`;
+  card.querySelectorAll('[data-ph]').forEach(d => d.onclick = () => {
+    const i = +d.dataset.ph, lb = document.createElement('div');
+    lb.id = 'tv-light'; lb.innerHTML = `<b>Corner ${'ABCD'[i]}</b><img src="${p.corners[i].photo}" alt="Corner ${'ABCD'[i]}">`;
+    lb.onclick = () => lb.remove(); document.body.appendChild(lb);
+  });
+}
+// plot clicks while in TV mode
+L.DomEvent.disableClickPropagation($('#tv-top')); L.DomEvent.disableClickPropagation($('#tv-panel')); L.DomEvent.disableClickPropagation($('#tv-card'));
+L.DomEvent.disableScrollPropagation($('#tv-panel'));
+map.on('click', () => { if (tvOn && selected && !addingPlace) { selected = null; tvRender(false); } });
 
 /* ---------------- start ---------------- */
 renderMap(true);
