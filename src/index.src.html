@@ -241,7 +241,7 @@ table.sides td:last-child{text-align:right;font-weight:700}
       <div id="results"></div>
     </aside>
     <div id="map">
-      <div class="layer-switch"><button data-layer="sat" class="on">Satellite</button><button data-layer="street">Streets</button></div>
+      <div class="layer-switch"><button data-layer="sat" class="on">New satellite</button><button data-layer="groad">Google</button><button data-layer="ghyb">Google sat.</button></div>
       <div class="legend"><span><i style="border-color:#fff"></i>For sale</span><span><i style="border-color:var(--res)"></i>Reserved</span><span><i style="border-color:var(--sold);border-style:dashed"></i>Sold</span><span><i style="border-color:var(--sand);border-width:0 0 3px"></i>Road side</span></div>
       <div class="addplace"><button class="btn primary" id="add-place">+ Place name</button></div>
       <div class="addbanner hidden" id="add-banner">Tap the map where the place is <button id="add-cancel">Cancel</button></div>
@@ -269,6 +269,7 @@ table.sides td:last-child{text-align:right;font-weight:700}
 
 <script>/*LEAFLET_JS*/</script>
 <script>/*GEO_JS*/</script>
+<script>/*GMUTANT_JS*/</script>
 <script>
 "use strict";
 /* =====================================================================
@@ -385,13 +386,40 @@ function streetLayer() {
    ===================================================================== */
 const map = L.map('map', { zoomControl: false, attributionControl: true }).setView(JIJIGA, 14);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-const layers = { sat: satLayer(), street: streetLayer() };
+const layers = { sat: satLayer() };
 layers.sat.addTo(map);
-document.querySelectorAll('.layer-switch button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.layer-switch button').forEach(x => x.classList.toggle('on', x === b));
+
+/* Google map layers: loaded only when someone taps a Google button (saves the free monthly allowance).
+   The key is meant to be public in web pages; it is protected by the website restriction set in Google Cloud. */
+const GOOGLE_KEY = 'AIzaSyDh6OtjzLM4i9kO6j7jTOiLyQrGG6T6vlg';
+let googlePromise = null;
+function loadGoogle() {
+  if (window.google && google.maps && google.maps.Map) return Promise.resolve();
+  if (googlePromise) return googlePromise;
+  googlePromise = new Promise((resolve, reject) => {
+    window.__kodhGoogleReady = resolve;
+    const s = document.createElement('script');
+    s.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_KEY + '&loading=async&callback=__kodhGoogleReady';
+    s.async = true;
+    s.onerror = () => { googlePromise = null; reject(new Error('net')); };
+    document.head.appendChild(s);
+    setTimeout(() => { if (!(window.google && google.maps && google.maps.Map)) { googlePromise = null; reject(new Error('timeout')); } }, 20000);
+  });
+  return googlePromise;
+}
+window.gm_authFailure = () => { toast('Google refused the map key. Showing the new satellite map instead.'); switchLayer('sat'); };
+
+async function switchLayer(name) {
+  document.querySelectorAll('.layer-switch button').forEach(x => x.classList.toggle('on', x.dataset.layer === name));
+  if ((name === 'groad' || name === 'ghyb') && !layers[name]) {
+    try { toast('Loading Google map…'); await loadGoogle(); }
+    catch (e) { toast('Could not load Google map. Check the internet connection.'); return switchLayer('sat'); }
+    layers[name] = L.gridLayer.googleMutant({ type: name === 'groad' ? 'roadmap' : 'hybrid', maxZoom: 21 });
+  }
   Object.values(layers).forEach(l => map.removeLayer(l));
-  layers[b.dataset.layer].addTo(map);
-});
+  layers[name].addTo(map);
+}
+document.querySelectorAll('.layer-switch button').forEach(b => b.onclick = () => switchLayer(b.dataset.layer));
 
 const plotLayer = L.layerGroup().addTo(map);
 let selected = null;
