@@ -2583,7 +2583,17 @@ function renderCapture() {
       renderCapture();
     };
     $('#back').onclick = () => { readSides(); draft.step = 2; renderCapture(); };
-    $('#next').onclick = () => { readSides(); livePub({ t: 'sides', sides: draft.sides }); draft.step = 4; renderCapture(); };
+    $('#next').onclick = () => {
+      readSides();
+      const nx = $('#next');
+      if (!(parseFloat(s.AC) > 0) && !nx.dataset.armed) {
+        nx.dataset.armed = 1; nx.textContent = 'Continue without diagonal';
+        $('#gps-compare').insertAdjacentHTML('afterbegin', '<div class="warn" style="margin-bottom:10px"><b>Please measure the diagonal A–C.</b> Without it the corner angles are guessed from GPS, and the land size can be off by 5–10%.</div>');
+        el.querySelector('[data-s="AC"]').focus();
+        return;
+      }
+      livePub({ t: 'sides', sides: draft.sides }); draft.step = 4; renderCapture();
+    };
     return;
   }
   if (draft.step === 4) {
@@ -2628,7 +2638,10 @@ function renderBricks() {
     const L_ = 'ABCD'[i];
     const isCap = capturing && capturing.i === i;
     let info;
-    if (isCap) {
+    if (isCap && !capturing.locked) {
+      const waited = Math.round((Date.now() - capturing.asked) / 1000);
+      info = `<b>Waiting for good GPS… ${waited}s</b><span>${capturing.warm != null ? 'Now ±' + Math.round(capturing.warm) + ' m, waiting for ±' + GOOD_FIX + ' m or better' : 'Searching for satellites'}. Stand still in the open.</span>`;
+    } else if (isCap) {
       const n = capturing.samples.length, left = Math.max(0, Math.ceil((capturing.dur - (Date.now() - capturing.start)) / 1000));
       const a = capturing.samples.length ? Math.round(median(capturing.samples.map(s => s.acc))) : null;
       info = `<b>Capturing… ${left}s</b><span>${n} readings${a != null ? ' · ±' + a + ' m' : ' · waiting for GPS'}</span><div class="bar"><i style="width:${Math.min(100, (Date.now() - capturing.start) / capturing.dur * 100)}%"></i></div>`;
@@ -2646,20 +2659,32 @@ function renderBricks() {
 
 const median = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
 
+const GOOD_FIX = 15;   // metres: wait for at least this accuracy before counting
 function startCapture(i) {
   stopCapture(true);
   livePub({ t: 'cap_start', i, mode: gpsMode });
   startLiveDot();
-  capturing = { i, samples: [], start: Date.now(), dur: gpsMode === 'demo' ? 6000 : 45000, watch: null, timer: null };
+  capturing = { i, samples: [], start: Date.now(), dur: gpsMode === 'demo' ? 6000 : 45000, watch: null, timer: null, locked: gpsMode === 'demo', asked: Date.now(), warm: null };
   if (gpsMode === 'real') {
     if (!navigator.geolocation) { $('#gps-msg').innerHTML = '<div class="err">This phone/browser has no GPS access.</div>'; capturing = null; return; }
     capturing.watch = navigator.geolocation.watchPosition(pos => {
       if (!capturing) return;
-      capturing.samples.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy || 50 });
+      const acc = pos.coords.accuracy || 50;
+      // GPS often starts far off (e.g. ±80 m) and settles in a few seconds: start the countdown only once it is good
+      if (!capturing.locked) {
+        capturing.warm = acc;
+        if (acc > GOOD_FIX && Date.now() - capturing.asked < 90000) return;
+        capturing.locked = true; capturing.start = Date.now();
+      }
+      capturing.samples.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc });
     }, err => {
-      const msg = err.code === 1 ? 'Location is blocked. Allow location for this site in your phone settings, or practise with Demo GPS.' : 'GPS error: ' + err.message;
-      $('#gps-msg').innerHTML = `<div class="err">${esc(msg)}</div>`;
-      stopCapture(true); renderBricks();
+      if (err.code === 1) {          // permission blocked: nothing will come, stop
+        $('#gps-msg').innerHTML = '<div class="err">Location is blocked. Allow location for this site in your phone settings, or practise with Demo GPS.</div>';
+        stopCapture(true); renderBricks(); return;
+      }
+      // signal lost / slow for a moment: keep listening, it usually comes back
+      $('#gps-msg').innerHTML = '<div class="warn">GPS signal is weak for a moment. Keep standing still in the open; it will continue by itself.</div>';
+      setTimeout(() => { const m = $('#gps-msg'); if (m && /weak for a moment/.test(m.textContent)) m.innerHTML = ''; }, 8000);
     }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
   } else {
     if (!demoTruth) makeDemoTruth();
@@ -2673,7 +2698,7 @@ function startCapture(i) {
   }
   capturing.timer = setInterval(() => {
     if (!capturing) return;
-    if (Date.now() - capturing.start >= capturing.dur) finishCapture(); else renderBricks();
+    if (capturing.locked && Date.now() - capturing.start >= capturing.dur) finishCapture(); else renderBricks();
   }, 500);
   renderBricks();
 }
@@ -3141,6 +3166,23 @@ function spread(c) {          // how scattered the readings were (metres, typica
   const d = c.raw.map(r => Math.hypot(r[1] * 1e-6 * kx, r[0] * 1e-6 * ky));
   return Math.sqrt(d.reduce((a, x) => a + x * x, 0) / d.length);
 }
+async function wImport() {
+  if (W.imported) { location.href = location.pathname; return; }
+  const latest = W.caps.map(a => a[a.length - 1]);
+  if (latest.some(c => !c) || !W.result || !W.result.ok) return;
+  const toData = async url => { try { const b = await (await fetch(url)).blob(); return await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); }); } catch (e) { return null; } };
+  const photos = await Promise.all([0, 1, 2, 3].map(i => W.photos[i] ? toData(W.photos[i]) : null));
+  const sides = {}; Object.keys(W.sides || {}).forEach(k => { const v = parseFloat(W.sides[k]); if (v > 0) sides[k] = v; });
+  plots.push({
+    id: 'p' + Date.now().toString(36), demo: false, area: (W.details && W.details.area) || 'Field test',
+    title: 'Field test · ' + ((W.details && W.details.area) || watchCode), price: (W.details && W.details.price) || 0, status: 'sale',
+    owner: '', phone: '', road: (W.details && W.details.road) || '', notes: 'Captured live in the field (test ' + watchCode + ').',
+    corners: latest.map((c, i) => ({ lat: c.lat, lng: c.lng, acc: c.acc, n: c.n, photo: photos[i] })),
+    sides, fitted: W.result.fitted, areaM2: W.result.area, method: W.result.method, rms: 0, created: Date.now()
+  });
+  save(); W.imported = true; wRenderSide();
+  toast('Added to your map. Tap again to open it.');
+}
 function capDist(a, b) { const [kx, ky] = mPerDeg(a.lat); return Math.hypot((a.lng - b.lng) * kx, (a.lat - b.lat) * ky); }
 
 function wRender() {
@@ -3187,11 +3229,13 @@ function wRenderSide() {
     <div class="sec"><h4>Corner bricks · ${done} of 4</h4><div class="bricks">${corners}</div></div>
     <div class="sec"><h4>Tape sizes</h4>${sidesHtml}</div>
     <div class="sec"><h4>Result</h4>${res}${W.saved ? '<div class="good" style="margin-top:8px">Saved on the friend’s phone</div>' : ''}</div>
+    ${W.result && W.result.ok ? `<button class="btn primary" id="w-import">${W.imported ? 'Added to your map ✓' : 'Add this plot to my map'}</button>` : ''}
     <div class="btns"><button class="btn ghost" id="w-follow">Go to friend</button><button class="btn ghost" id="w-copy">Copy test data</button></div>
     <div class="sec"><h4>Activity</h4><div class="wlog">${W.log.map(esc).map(x => `<div>${x}</div>`).join('') || 'Nothing yet'}</div></div>`;
   side.querySelectorAll('[data-wl]').forEach(b => b.onclick = () => setWBase(b.dataset.wl));
   side.querySelectorAll('[data-photo]').forEach(d => d.onclick = () => window.open(W.photos[+d.dataset.photo], '_blank'));
   $('#w-follow').onclick = () => { const t = W.pos ? [W.pos.lat, W.pos.lng] : (latest.find(Boolean) ? [latest.find(Boolean).lat, latest.find(Boolean).lng] : null); if (t) wMap.setView(t, 19); else toast('No position from the friend yet'); };
+  if ($('#w-import')) $('#w-import').onclick = wImport;
   $('#w-copy').onclick = async () => { try { await navigator.clipboard.writeText(JSON.stringify({ code: watchCode, details: W.details, caps: W.caps, sides: W.sides, result: W.result, trail: W.trail }, null, 1)); toast('Test data copied. Paste it to Claude to analyse.'); } catch (e) { toast('Copy was blocked'); } };
 }
 
