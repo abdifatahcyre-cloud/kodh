@@ -3119,6 +3119,7 @@ const wSeen = new Set();
 
 function startWatch() {
   document.body.classList.add('watching');
+  const brand = document.querySelector('.brand'); brand.style.cursor = 'pointer'; brand.title = 'Back to dashboard'; brand.onclick = () => { location.href = location.pathname; };
   show('watch');
   wMap = L.map('w-map', { maxZoom: 21 }).setView(JIJIGA, 14);
   wLayers = { trail: L.layerGroup().addTo(wMap), raw: L.layerGroup().addTo(wMap), shapes: L.layerGroup().addTo(wMap), dot: L.layerGroup().addTo(wMap) };
@@ -3222,6 +3223,7 @@ function wRenderSide() {
   const sidesHtml = W.sides ? `<table class="sides">${['AB', 'BC', 'CD', 'DA', 'AC'].filter(k => W.sides[k]).map(k => `<tr><td>${k === 'AC' ? 'Diagonal A–C' : 'Side ' + sideName(k)}</td><td>${W.sides[k]} m</td></tr>`).join('')}</table>` : '<div class="note">Not entered yet</div>';
   const res = W.result ? (W.result.ok ? `<div class="stats"><div class="stat"><b>${m2(W.result.area)}</b><span>Land size</span></div><div class="stat"><b>${W.result.residuals.map(x => x.toFixed(1)).join(' / ')} m</b><span>Brick vs tape A/B/C/D</span></div></div>${(W.result.warnings || []).map(w => `<div class="warn">${esc(w)}</div>`).join('')}` : `<div class="err">${esc(W.result.error)}</div>`) : '<div class="note">Not checked yet</div>';
   side.innerHTML = `
+    <a class="btn ghost" href="${location.pathname}" style="justify-self:start">← Back to dashboard</a>
     <h2>Live test · ${watchCode}</h2>
     <div class="wstat ${W.connected ? 'ok' : 'bad'}"><i></i>${W.connected ? 'Connected' : 'Connecting…'}${ago != null ? ` · friend's last update ${ago < 60 ? ago + ' s' : Math.round(ago / 60) + ' min'} ago` : ' · nothing from the friend yet'}</div>
     ${W.details ? `<div class="note"><b>${esc(W.details.area)}</b> · ${fmtBirr(W.details.price)}${W.details.road ? ' · road side ' + sideName(W.details.road) : ''}</div>` : ''}
