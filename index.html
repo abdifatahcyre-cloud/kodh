@@ -853,6 +853,27 @@ table.sides td:last-child{text-align:right;font-weight:700}
 .opt b{font-size:14px}.opt span{font-size:12px;color:var(--muted)}
 .lg{display:flex;align-items:center;gap:8px;font-size:13px;padding:1px 2px}.lg i{width:16px;height:10px;border-radius:2px;border:2px solid;flex:none}
 @media (min-width:821px){body.detail-open .map-tools{right:404px}}
+/* ---------- live field test ---------- */
+.live-banner{display:flex;align-items:center;gap:10px;background:#3a1212;border:1px solid #7f1d1d;color:#fecaca;border-radius:14px;padding:10px 14px;margin-bottom:14px;font-weight:700;font-size:14px}
+.live-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;flex:none;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.25}}
+body.watching .tabs, body.watching nav.bottom, body.watching .tv-btn{display:none!important}
+body.watching main{bottom:0!important}
+#view-watch{display:grid;grid-template-columns:1fr 400px}
+#w-map{position:relative;min-height:0}
+#w-side{background:var(--ink-2);border-left:1px solid var(--line);overflow:auto;padding:16px;display:grid;gap:14px;align-content:start}
+#w-side h2{margin:0;font-size:20px}
+.wstat{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+.wstat i{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+.wstat.ok i{background:var(--ok)}.wstat.bad i{background:var(--sel)}
+.wc{display:grid;grid-template-columns:40px 1fr 64px;gap:10px;align-items:center;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px}
+.wc .letter{width:40px;height:40px;border-radius:10px;background:var(--ink-3);display:grid;place-items:center;font-weight:800;font-size:18px}
+.wc.done .letter{background:var(--ok);color:#06240f}.wc.now .letter{background:var(--sand);color:var(--ink);animation:blink 1s infinite}
+.wc b{display:block}.wc span{font-size:12.5px;color:var(--muted);line-height:1.45}
+.wc .thumb{width:64px;height:48px;border-radius:8px;background:var(--ink-3) center/cover;cursor:pointer}
+.wlog{font-size:12.5px;color:var(--muted);display:grid;gap:3px;max-height:160px;overflow:auto}
+.raw-dot{width:5px;height:5px;border-radius:50%;background:#93c5fd;opacity:.7}
+@media (max-width:820px){#view-watch{grid-template-columns:1fr;grid-template-rows:55% 45%}#w-side{border-left:0;border-top:1px solid var(--line)}}
 /* drop pins (shown when zoomed out) */
 .pin-icon{background:none!important;border:0!important}
 .pin{position:relative;width:30px;height:40px;cursor:pointer;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));transform-origin:50% 100%}
@@ -1038,6 +1059,12 @@ body.tv .price-tag{font-size:14px!important;padding:3px 9px!important}
   <!-- ================= CAPTURE ================= -->
   <section class="view hidden" id="view-capture">
     <div class="wrap" id="cap"></div>
+  </section>
+
+  <!-- ================= LIVE WATCH ================= -->
+  <section class="view hidden" id="view-watch">
+    <div id="w-map"></div>
+    <aside id="w-side"></aside>
   </section>
 
   <!-- ================= MANAGE ================= -->
@@ -2069,6 +2096,7 @@ function show(view) {
   if (view === 'map') { setTimeout(() => map.invalidateSize(), 30); renderMap(); }
   if (view === 'capture') renderCapture();
   if (view === 'manage') renderManage();
+  if (view === 'watch') setTimeout(() => wMap && wMap.invalidateSize(), 50);
 }
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => show(b.dataset.view));
 
@@ -2475,7 +2503,7 @@ function renderCapture() {
   if (capMap) { capMap.remove(); capMap = null; }
   if (draft.step === 1) {
     const areas = [...new Set(plots.map(p => p.area))].sort();
-    el.innerHTML = stepsBar(1) + `
+    el.innerHTML = liveBanner() + stepsBar(1) + `
       <h2>New plot · details</h2>
       <p class="lead">Fill this in with the seller. Next, you'll walk to each corner brick.</p>
       <div class="panel">
@@ -2497,12 +2525,13 @@ function renderCapture() {
       draft.area = $('#c-area').value.trim(); draft.price = $('#c-price').value; draft.owner = $('#c-owner').value.trim();
       draft.phone = $('#c-phone').value.trim(); draft.title = $('#c-title').value.trim(); draft.road = $('#c-road').value; draft.notes = $('#c-notes').value.trim();
       if (!draft.area || !(+draft.price > 0)) { toast('Add the area and the price first.'); return; }
+      livePub({ t: 'details', area: draft.area, price: +draft.price, road: draft.road });
       draft.step = 2; renderCapture();
     };
     return;
   }
   if (draft.step === 2) {
-    el.innerHTML = stepsBar(2) + `
+    el.innerHTML = liveBanner() + stepsBar(2) + `
       <h2>Corner bricks</h2>
       <p class="lead">Stand right on each brick and tap <b>Capture</b>. Keep still for the countdown; the phone takes many GPS readings and averages them. Take a photo of the brick with the name showing.</p>
       <div class="panel">
@@ -2554,7 +2583,7 @@ function renderCapture() {
       renderCapture();
     };
     $('#back').onclick = () => { readSides(); draft.step = 2; renderCapture(); };
-    $('#next').onclick = () => { readSides(); draft.step = 4; renderCapture(); };
+    $('#next').onclick = () => { readSides(); livePub({ t: 'sides', sides: draft.sides }); draft.step = 4; renderCapture(); };
     return;
   }
   if (draft.step === 4) {
@@ -2562,6 +2591,7 @@ function renderCapture() {
     const sides = {}; Object.keys(draft.sides).forEach(k => { const v = parseFloat(draft.sides[k]); if (v > 0) sides[k] = v; });
     const r = KGeo.fitPlot(gps, sides);
     draft.result = r;
+    livePub(r.ok ? { t: 'result', ok: true, fitted: r.fitted, area: r.area, residuals: r.residuals, method: r.method, warnings: r.warnings } : { t: 'result', ok: false, error: r.error });
     const accs = draft.corners.map(c => c.acc);
     el.innerHTML = stepsBar(4) + `
       <h2>Check the shape</h2>
@@ -2618,6 +2648,8 @@ const median = a => { const s = a.slice().sort((x, y) => x - y); return s.length
 
 function startCapture(i) {
   stopCapture(true);
+  livePub({ t: 'cap_start', i, mode: gpsMode });
+  startLiveDot();
   capturing = { i, samples: [], start: Date.now(), dur: gpsMode === 'demo' ? 6000 : 45000, watch: null, timer: null };
   if (gpsMode === 'real') {
     if (!navigator.geolocation) { $('#gps-msg').innerHTML = '<div class="err">This phone/browser has no GPS access.</div>'; capturing = null; return; }
@@ -2656,6 +2688,9 @@ function finishCapture() {
   good.forEach(s => { const w = 1 / Math.max(1, s.acc * s.acc); W += w; la += s.lat * w; ln += s.lng * w; });
   const prev = draft.corners[i];
   draft.corners[i] = { lat: la / W, lng: ln / W, acc: median(good.map(s => s.acc)), n: good.length, photo: prev ? prev.photo : null };
+  { const c = draft.corners[i], step = Math.max(1, Math.ceil(samples.length / 140));
+    livePub({ t: 'corner', i, lat: c.lat, lng: c.lng, acc: Math.round(c.acc * 10) / 10, n: c.n, total: samples.length, mode: gpsMode,
+      raw: samples.filter((_, k) => k % step === 0).map(x => [Math.round((x.lat - c.lat) * 1e6), Math.round((x.lng - c.lng) * 1e6), Math.round(x.acc * 10) / 10]) }); }
   renderBricks(); drawCapMap();
 }
 
@@ -2686,7 +2721,7 @@ function addPhoto(i, file) {
     if (!draft.corners[i]) draft.corners[i] = { lat: null, lng: null, acc: null, n: 0, photo: data, pending: true };
     else draft.corners[i].photo = data;
     if (draft.corners[i].pending) { draft.corners[i] = null; toast('Capture the GPS first, then add the photo.'); }
-    else toast('Photo saved for brick ' + 'ABCD'[i]);
+    else { toast('Photo saved for brick ' + 'ABCD'[i]); livePhoto(i, data); }
     renderBricks();
   };
   img.src = url;
@@ -2743,6 +2778,7 @@ function savePlot() {
     sides, fitted: r.fitted, areaM2: r.area, method: r.method, rms: r.rms, created: Date.now(), practice: gpsMode === 'demo'
   };
   plots.push(p); save();
+  livePub({ t: 'saved', area: p.areaM2 });
   draft = blankDraft(); demoTruth = null;
   filt.area = ''; filt.budget = 0; filt.size = 0;
   $('#f-budget').value = ''; $('#f-size').value = '';
@@ -2783,6 +2819,7 @@ function renderManage() {
         <button class="btn ghost" data-pl-view="${pl.id}">View</button>
         <button class="btn danger" data-pl-del="${pl.id}">Delete</button>
       </div>`).join('') : '<div class="note">No place names yet.</div>'}</div>
+    ${liveSetupHtml()}
     <div class="panel" style="margin-top:18px">
       <div class="btns">
         <button class="btn ghost" id="copy">Copy all data</button>
@@ -2807,6 +2844,7 @@ function renderManage() {
     if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = 'Sure?'; return; }
     places = places.filter(x => x.id !== b.dataset.plDel); savePlaces(); renderPlaces(); renderManage(); toast('Place deleted');
   });
+  wireLiveSetup();
   $('#copy').onclick = async () => {
     try { await navigator.clipboard.writeText(JSON.stringify({ plots: plots.map(p => Object.assign({}, p, { corners: p.corners.map(c => Object.assign({}, c, { photo: c.photo ? '[photo]' : null })) })), places }, null, 1)); toast('Copied'); }
     catch (e) { toast('Copy was blocked by the browser'); }
@@ -2987,10 +3025,186 @@ L.DomEvent.disableClickPropagation($('#tv-top')); L.DomEvent.disableClickPropaga
 L.DomEvent.disableScrollPropagation($('#tv-panel'));
 map.on('click', () => { if (tvOn && selected && !addingPlace) { selected = null; tvRender(false); } });
 
+/* =====================================================================
+   LIVE FIELD TEST
+   The field phone opens  ?live=CODE  and sends each step to a private
+   channel; the laptop opens  ?watch=CODE  and sees it live.
+   Channel: ntfy.sh (free relay). Anyone with the code can read it,
+   so use it for tests only, not for real client data.
+   ===================================================================== */
+const qs = new URLSearchParams(location.search);
+const cleanCode = c => (c && /^[a-z0-9]{6,20}$/.test(c)) ? c : null;
+const liveCode = cleanCode(qs.get('live')), watchCode = cleanCode(qs.get('watch'));
+const LIVE_URL = code => 'https://ntfy.sh/kodh-live-' + code;
+let liveFailShown = false, liveDotWatch = null, liveLastPos = 0;
+
+function livePub(obj) {
+  if (!liveCode) return;
+  obj.ts = Date.now();
+  fetch(LIVE_URL(liveCode), { method: 'POST', body: JSON.stringify(obj) }).catch(() => {
+    if (!liveFailShown) { liveFailShown = true; toast('Live link has no internet right now. Keep going; it will retry with the next step.'); setTimeout(() => liveFailShown = false, 20000); }
+  });
+}
+function livePhoto(i, dataUrl) {
+  if (!liveCode) return;
+  fetch(dataUrl).then(r => r.blob()).then(blob => fetch(LIVE_URL(liveCode), { method: 'PUT', body: blob,
+    headers: { 'Filename': 'brick-' + 'ABCD'[i] + '.jpg', 'X-Message': JSON.stringify({ t: 'photo', i, ts: Date.now() }) } })).catch(() => {});
+}
+function startLiveDot() {
+  if (!liveCode || liveDotWatch != null || gpsMode !== 'real' || !navigator.geolocation) return;
+  liveDotWatch = navigator.geolocation.watchPosition(pos => {
+    if (Date.now() - liveLastPos < 8000) return;
+    liveLastPos = Date.now();
+    livePub({ t: 'pos', lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy * 10) / 10 });
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+}
+function liveBanner() {
+  return liveCode ? `<div class="live-banner"><span class="live-dot"></span><span>LIVE TEST · code ${liveCode} · your team sees every step. Use <b>Real GPS</b>.</span></div>` : '';
+}
+
+/* ---------- Manage: create a live test ---------- */
+function liveSetupHtml() {
+  return `<h2 style="margin-top:26px">Live field test</h2>
+    <p class="lead">Create a test link for someone in the field. When they capture a plot with it, you watch every step live on this screen: their position, each brick, the GPS readings, photos, tape sizes and the final outline.</p>
+    <div class="panel" id="live-setup"><button class="btn primary" id="live-new">Create live test</button>
+    <div class="note">Test only: the live channel is a free public relay, and anyone who has the code could read it. Don't use it for real clients' details.</div></div>`;
+}
+function wireLiveSetup() {
+  const btn = $('#live-new'); if (!btn) return;
+  btn.onclick = () => {
+    const code = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
+    const base = location.origin + location.pathname;
+    const fLink = base + '?live=' + code, wLink = base + '?watch=' + code;
+    const msg = 'KODH live test. Open this link on your phone in Chrome, allow location, and follow the steps: ' + fLink;
+    $('#live-setup').innerHTML = `
+      <div class="field"><label>1 · Send this link to your friend</label><input type="text" readonly value="${fLink}" id="live-flink"></div>
+      <div class="btns"><button class="btn ghost" id="live-copy">Copy link</button><a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Send on WhatsApp</a></div>
+      <div class="field"><label>2 · Open your watch screen</label></div>
+      <div class="btns"><a class="btn primary" href="${wLink}">Open watch screen (code ${code})</a></div>
+      <div class="note">Keep the watch screen open during the video call. If you open it late, it still shows everything sent so far (kept for about 12 hours).</div>`;
+    $('#live-copy').onclick = async () => { try { await navigator.clipboard.writeText(fLink); toast('Link copied'); } catch (e) { $('#live-flink').select(); toast('Select and copy the link'); } };
+  };
+}
+
+/* ---------- Watch screen ---------- */
+let wMap = null;
+const W = { connected: false, hello: null, details: null, pos: null, trail: [], caps: [[], [], [], []], now: null, photos: {}, sides: null, result: null, saved: false, last: 0, log: [] };
+let wLayers = null, wBase = null, wFitted = false;
+const wSeen = new Set();
+
+function startWatch() {
+  document.body.classList.add('watching');
+  show('watch');
+  wMap = L.map('w-map', { maxZoom: 21 }).setView(JIJIGA, 14);
+  wLayers = { trail: L.layerGroup().addTo(wMap), raw: L.layerGroup().addTo(wMap), shapes: L.layerGroup().addTo(wMap), dot: L.layerGroup().addTo(wMap) };
+  setWBase(mapChoice);
+  wRender();
+  const es = new EventSource(LIVE_URL(watchCode) + '/sse?since=all');
+  es.onopen = () => { W.connected = true; wRender(); };
+  es.onerror = () => { W.connected = false; wRender(); };
+  es.onmessage = e => {
+    let d; try { d = JSON.parse(e.data); } catch (x) { return; }
+    if (d.event && d.event !== 'message') return;
+    if (d.id) { if (wSeen.has(d.id)) return; wSeen.add(d.id); }      // ignore repeats after a reconnect
+    let m; try { m = JSON.parse(d.message); } catch (x) { return; }
+    if (m.t === 'photo' && d.attachment) m.url = d.attachment.url;
+    wHandle(m);
+  };
+  setInterval(wRenderSide, 1000);
+}
+async function setWBase(name) {
+  const l = await makeBase(name); if (!l) return setWBase('sat');
+  if (wBase) wMap.removeLayer(wBase);
+  wBase = l.addTo(wMap); mapChoice = name; wRenderSide();
+}
+function wLog(t) { W.log.unshift(new Date().toLocaleTimeString() + ' · ' + t); W.log = W.log.slice(0, 60); }
+function wHandle(m) {
+  W.last = Math.max(W.last, m.ts || 0);
+  const L_ = i => 'ABCD'[i];
+  switch (m.t) {
+    case 'hello': W.hello = m; wLog('Friend opened the link'); break;
+    case 'details': W.details = m; wLog('Details: ' + m.area + ', ' + fmtBirr(m.price)); break;
+    case 'pos': W.pos = m; W.trail.push([m.lat, m.lng]); if (W.trail.length > 400) W.trail.shift(); break;
+    case 'cap_start': W.now = m.i; wLog('Capturing brick ' + L_(m.i) + (m.mode === 'demo' ? ' (practice GPS)' : '')); break;
+    case 'corner': W.now = null; W.caps[m.i].push(m); wLog('Brick ' + L_(m.i) + ' captured ±' + m.acc + ' m, ' + m.n + ' readings'); break;
+    case 'photo': W.photos[m.i] = m.url; wLog('Photo of brick ' + L_(m.i)); break;
+    case 'sides': W.sides = m.sides; wLog('Tape sizes entered'); break;
+    case 'result': W.result = m; wLog(m.ok ? 'Shape checked: ' + Math.round(m.area) + ' m²' : 'Shape problem: ' + m.error); break;
+    case 'saved': W.saved = true; wLog('Plot saved on the phone'); break;
+  }
+  wRender();
+}
+const mPerDeg = lat => [111320 * Math.cos(lat * Math.PI / 180), 110540];
+function spread(c) {          // how scattered the readings were (metres, typical distance from the average)
+  if (!c.raw || !c.raw.length) return null;
+  const [kx, ky] = mPerDeg(c.lat);
+  const d = c.raw.map(r => Math.hypot(r[1] * 1e-6 * kx, r[0] * 1e-6 * ky));
+  return Math.sqrt(d.reduce((a, x) => a + x * x, 0) / d.length);
+}
+function capDist(a, b) { const [kx, ky] = mPerDeg(a.lat); return Math.hypot((a.lng - b.lng) * kx, (a.lat - b.lat) * ky); }
+
+function wRender() {
+  if (!wMap) return;
+  wLayers.trail.clearLayers(); wLayers.raw.clearLayers(); wLayers.shapes.clearLayers(); wLayers.dot.clearLayers();
+  if (W.trail.length > 1) L.polyline(W.trail, { color: '#60a5fa', weight: 2, opacity: .5, dashArray: '3 6' }).addTo(wLayers.trail);
+  const latest = W.caps.map(a => a[a.length - 1]);
+  W.caps.forEach((arr, i) => arr.forEach((c, k) => {
+    const isLast = k === arr.length - 1;
+    if (isLast && c.raw) { const [kx, ky] = [1, 1]; c.raw.forEach(r => L.circleMarker([c.lat + r[0] * 1e-6, c.lng + r[1] * 1e-6], { radius: 2, color: '#93c5fd', weight: 0, fillOpacity: .7 }).addTo(wLayers.raw)); }
+    L.circleMarker([c.lat, c.lng], isLast ? { radius: 9, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1 } : { radius: 5, color: '#fff', weight: 1, fillColor: '#8b97a3', fillOpacity: 1 })
+      .bindTooltip('ABCD'[i] + (isLast ? '' : ' (earlier)'), { permanent: isLast, direction: 'top', className: 'price-tag' }).addTo(wLayers.shapes);
+  }));
+  const pts = latest.filter(Boolean).map(c => [c.lat, c.lng]);
+  if (pts.length >= 2) L.polyline(pts.length === 4 ? pts.concat([pts[0]]) : pts, { color: '#60a5fa', weight: 2, dashArray: '6 6' }).addTo(wLayers.shapes);
+  if (W.result && W.result.ok) L.polygon(W.result.fitted, { color: '#fff', weight: 3, fillColor: '#fff', fillOpacity: .15 }).addTo(wLayers.shapes);
+  if (W.pos) {
+    L.circle([W.pos.lat, W.pos.lng], { radius: W.pos.acc || 5, color: '#3b82f6', weight: 1, fillOpacity: .12 }).addTo(wLayers.dot);
+    L.circleMarker([W.pos.lat, W.pos.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#3b82f6', fillOpacity: 1 }).bindTooltip('Friend', { direction: 'right' }).addTo(wLayers.dot);
+  }
+  const all = pts.concat(W.pos ? [[W.pos.lat, W.pos.lng]] : []);
+  if (all.length && !wFitted) { wMap.setView(all[all.length - 1], 19); wFitted = true; }
+  wRenderSide();
+}
+function wRenderSide() {
+  const side = $('#w-side'); if (!side || !wMap) return;
+  const ago = W.last ? Math.round((Date.now() - W.last) / 1000) : null;
+  const latest = W.caps.map(a => a[a.length - 1]);
+  const done = latest.filter(Boolean).length;
+  const corners = [0, 1, 2, 3].map(i => {
+    const c = latest[i], arr = W.caps[i], sp = c ? spread(c) : null;
+    const rep = arr.length > 1 ? capDist(arr[arr.length - 1], arr[arr.length - 2]) : null;
+    const info = c ? `<b>±${c.acc} m · ${c.n} readings${c.mode === 'demo' ? ' · practice' : ''}</b><span>Readings scattered ~${sp != null ? sp.toFixed(1) : '?'} m${rep != null ? `<br>Captured ${arr.length}×: last two are <b style="display:inline;color:var(--text)">${rep.toFixed(1)} m</b> apart` : ''}</span>`
+      : W.now === i ? '<b>Capturing now…</b><span>Friend is standing on this brick</span>' : '<b>Not yet</b><span>Waiting</span>';
+    return `<div class="wc ${c ? 'done' : ''} ${W.now === i ? 'now' : ''}"><div class="letter">${'ABCD'[i]}</div><div>${info}</div><div class="thumb" ${W.photos[i] ? `style="background-image:url(${W.photos[i]})" data-photo="${i}"` : ''}></div></div>`;
+  }).join('');
+  const sidesHtml = W.sides ? `<table class="sides">${['AB', 'BC', 'CD', 'DA', 'AC'].filter(k => W.sides[k]).map(k => `<tr><td>${k === 'AC' ? 'Diagonal A–C' : 'Side ' + sideName(k)}</td><td>${W.sides[k]} m</td></tr>`).join('')}</table>` : '<div class="note">Not entered yet</div>';
+  const res = W.result ? (W.result.ok ? `<div class="stats"><div class="stat"><b>${m2(W.result.area)}</b><span>Land size</span></div><div class="stat"><b>${W.result.residuals.map(x => x.toFixed(1)).join(' / ')} m</b><span>Brick vs tape A/B/C/D</span></div></div>${(W.result.warnings || []).map(w => `<div class="warn">${esc(w)}</div>`).join('')}` : `<div class="err">${esc(W.result.error)}</div>`) : '<div class="note">Not checked yet</div>';
+  side.innerHTML = `
+    <h2>Live test · ${watchCode}</h2>
+    <div class="wstat ${W.connected ? 'ok' : 'bad'}"><i></i>${W.connected ? 'Connected' : 'Connecting…'}${ago != null ? ` · friend's last update ${ago < 60 ? ago + ' s' : Math.round(ago / 60) + ' min'} ago` : ' · nothing from the friend yet'}</div>
+    ${W.details ? `<div class="note"><b>${esc(W.details.area)}</b> · ${fmtBirr(W.details.price)}${W.details.road ? ' · road side ' + sideName(W.details.road) : ''}</div>` : ''}
+    <div class="chips">${Object.keys(MAP_NAMES).map(k => `<button class="chip ${mapChoice === k ? 'on' : ''}" data-wl="${k}">${MAP_NAMES[k]}</button>`).join('')}</div>
+    <div class="sec"><h4>Corner bricks · ${done} of 4</h4><div class="bricks">${corners}</div></div>
+    <div class="sec"><h4>Tape sizes</h4>${sidesHtml}</div>
+    <div class="sec"><h4>Result</h4>${res}${W.saved ? '<div class="good" style="margin-top:8px">Saved on the friend’s phone</div>' : ''}</div>
+    <div class="btns"><button class="btn ghost" id="w-follow">Go to friend</button><button class="btn ghost" id="w-copy">Copy test data</button></div>
+    <div class="sec"><h4>Activity</h4><div class="wlog">${W.log.map(esc).map(x => `<div>${x}</div>`).join('') || 'Nothing yet'}</div></div>`;
+  side.querySelectorAll('[data-wl]').forEach(b => b.onclick = () => setWBase(b.dataset.wl));
+  side.querySelectorAll('[data-photo]').forEach(d => d.onclick = () => window.open(W.photos[+d.dataset.photo], '_blank'));
+  $('#w-follow').onclick = () => { const t = W.pos ? [W.pos.lat, W.pos.lng] : (latest.find(Boolean) ? [latest.find(Boolean).lat, latest.find(Boolean).lng] : null); if (t) wMap.setView(t, 19); else toast('No position from the friend yet'); };
+  $('#w-copy').onclick = async () => { try { await navigator.clipboard.writeText(JSON.stringify({ code: watchCode, details: W.details, caps: W.caps, sides: W.sides, result: W.result, trail: W.trail }, null, 1)); toast('Test data copied. Paste it to Claude to analyse.'); } catch (e) { toast('Copy was blocked'); } };
+}
+
 /* ---------------- start ---------------- */
 renderMap(true);
 renderPlaces();
 if (isPhone()) setSheet(true);
+if (watchCode) startWatch();
+else if (liveCode) {
+  if (navigator.geolocation && window.isSecureContext) gpsMode = 'real';
+  livePub({ t: 'hello', ua: navigator.userAgent.slice(0, 90) });
+  show('capture');
+}
 </script>
 </body>
 </html>
