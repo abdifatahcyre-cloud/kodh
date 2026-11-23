@@ -853,6 +853,19 @@ table.sides td:last-child{text-align:right;font-weight:700}
 .opt b{font-size:14px}.opt span{font-size:12px;color:var(--muted)}
 .lg{display:flex;align-items:center;gap:8px;font-size:13px;padding:1px 2px}.lg i{width:16px;height:10px;border-radius:2px;border:2px solid;flex:none}
 @media (min-width:821px){body.detail-open .map-tools{right:404px}}
+/* ---------- measuring ---------- */
+.m-len{background:#111827;color:#fde68a;font-weight:800;font-size:13px;padding:2px 8px;border-radius:7px;white-space:nowrap;transform:translate(-50%,-50%);border:1px solid #fbbf24;width:max-content;pointer-events:none}
+body.tv .m-len{font-size:16px;padding:3px 10px}
+.m-pt{width:16px;height:16px;border-radius:50%;background:#fbbf24;border:3px solid #111827;transform:translate(-8px,-8px);cursor:grab;box-shadow:0 0 0 2px #fbbf24}
+.m-pt.snap{background:#22c55e;box-shadow:0 0 0 2px #22c55e}
+#measure-bar{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:850;background:rgba(17,24,39,.95);border:1px solid #fbbf24;border-radius:14px;padding:8px 10px 8px 14px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow);max-width:calc(100% - 24px);flex-wrap:wrap}
+#measure-bar .tot{font-weight:800;font-size:16px;color:#fde68a;margin-right:4px}
+#measure-bar .hint{font-size:12.5px;color:var(--muted);flex-basis:100%;order:9}
+#measure-bar button{border:1px solid var(--line);background:var(--ink-3);color:#fff;border-radius:9px;padding:7px 11px;font-weight:800;cursor:pointer}
+#measure-bar button.go{background:#fbbf24;color:#111827;border-color:#fbbf24}
+#map.measuring .leaflet-container{cursor:crosshair}
+@media (max-width:820px){#measure-bar{bottom:auto;top:12px;left:12px;right:66px;transform:none;max-width:none}#measure-bar .hint{font-size:12px}body.tv #measure-bar{top:auto;bottom:250px;right:12px}}
+body.tv #measure-bar{bottom:auto;top:84px}
 /* ---------- live field test ---------- */
 .live-banner{display:flex;align-items:center;gap:10px;background:#3a1212;border:1px solid #7f1d1d;color:#fecaca;border-radius:14px;padding:10px 14px;margin-bottom:14px;font-weight:700;font-size:14px}
 .live-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;flex:none;animation:blink 1.2s infinite}
@@ -1019,6 +1032,7 @@ body.tv .price-tag{font-size:14px!important;padding:3px 9px!important}
     <div id="map">
       <div class="map-tools">
         <button class="tool" id="btn-layers" title="Map type and legend" aria-label="Map type and legend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5z"/><path d="m2 13 10 5 10-5"/></svg></button>
+        <button class="tool" id="btn-measure" title="Measure distance" aria-label="Measure distance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg></button>
         <button class="tool" id="add-place" title="Add a place name" aria-label="Add a place name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><path d="M12 7v6M9 10h6"/></svg></button>
         <div id="layer-menu" class="hidden">
           <h5>Map</h5>
@@ -1035,12 +1049,14 @@ body.tv .price-tag{font-size:14px!important;padding:3px 9px!important}
       <div class="addbanner hidden" id="add-banner">Tap the map where the place is <button id="add-cancel">Cancel</button></div>
       <div class="sheet hidden" id="place-sheet"></div>
       <div id="detail" class="hidden"></div>
+      <div id="measure-bar" class="hidden"></div>
       <!-- TV presentation overlays -->
       <div id="tv-top" class="tv-only tv-fade">
         <button class="tvb icon" id="tv-prev" title="Previous plot (←)">◀</button>
         <button class="tvb icon" id="tv-next" title="Next plot (→)">▶</button>
         <div id="tv-count"></div>
         <button class="tvb" id="tv-filters">Filters</button>
+        <button class="tvb" id="tv-measure" title="Measure distance">📏 Measure</button>
         <div class="grow"></div>
         <div class="tv-maps" id="tv-maps"><button data-layer="sat">New satellite</button><button data-layer="groad">Google</button><button data-layer="ghyb">Google sat.</button></div>
         <button class="tvb icon" id="tv-full" title="Full screen">⛶</button>
@@ -2243,7 +2259,7 @@ function renderMap(fit) {
   for (const k in shapes) delete shapes[k];
   list.forEach(p => {
     const poly = L.polygon(p.fitted, styleFor(p, selected === p.id)).addTo(plotLayer);
-    poly.on('click', e => { L.DomEvent.stopPropagation(e); if (addingPlace) { placeAt(e.latlng); return; } select(p.id, false); if (tvOn) tvUpdateTop(); });
+    poly.on('click', e => { L.DomEvent.stopPropagation(e); if (measuring) { measureAdd(e.latlng); return; } if (addingPlace) { placeAt(e.latlng); return; } select(p.id, false); if (tvOn) tvUpdateTop(); });
     const tag = L.tooltip({ permanent: true, direction: 'center', className: 'price-tag', opacity: 1 })
       .setContent(p.status === 'sold' ? 'Sold' : shortBirr(p.price));
     poly.bindTooltip(tag);
@@ -2253,7 +2269,7 @@ function renderMap(fit) {
       road = L.polyline([p.fitted[i], p.fitted[(i + 1) % 4]], { color: '#e3b56b', weight: 5, opacity: .95, interactive: false }).addTo(plotLayer);
     }
     const pin = L.marker(plotCenter(p), { icon: pinIcon(p, selected === p.id), keyboard: false, zIndexOffset: selected === p.id ? 1000 : 0 })
-      .on('click', e => { L.DomEvent.stopPropagation(e); select(p.id, true); if (tvOn) tvUpdateTop(); }).addTo(pinLayer);
+      .on('click', e => { L.DomEvent.stopPropagation(e); if (measuring) { measureAdd(e.latlng); return; } select(p.id, true); if (tvOn) tvUpdateTop(); }).addTo(pinLayer);
     shapes[p.id] = { poly, road, pin };
   });
   updateTags();
@@ -2273,7 +2289,7 @@ $('#results').onmouseover = e => {
 
 function updateTags() {
   updatePins();
-  const showTags = map.getZoom() >= 16 && !(tvOn && selected);
+  const showTags = map.getZoom() >= 16 && !(tvOn && selected) && !(typeof measuring !== 'undefined' && (measuring || mPts.length));
   Object.values(shapes).forEach(s => { if (showTags) s.poly.openTooltip(); else s.poly.closeTooltip(); });
 }
 map.on('zoomend', updateTags);
@@ -2361,14 +2377,15 @@ function renderPlaces() {
     const icon = L.divIcon({ className: 'pl-icon', iconSize: [0, 0],
       html: `<div class="pl ${isArea ? 'area' : ''}"><i style="background:${col}"></i>${esc(pl.name)}</div>` });
     L.marker([pl.lat, pl.lng], { icon, keyboard: false, zIndexOffset: isArea ? -100 : 100 })
-      .on('click', () => openPlaceSheet(pl)).addTo(placeLayer);
+      .on('click', e => { L.DomEvent.stopPropagation(e); if (measuring) { measureAdd(L.latLng(pl.lat, pl.lng), true); return; } openPlaceSheet(pl); }).addTo(placeLayer);
   });
 }
 map.on('zoomend', renderPlaces);
 // clicks on panels and buttons over the map must not count as map taps
-['.map-tools', '#add-banner', '#place-sheet', '#detail'].forEach(sel => { const el = $(sel); if (el) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); } });
+['.map-tools', '#add-banner', '#place-sheet', '#detail', '#measure-bar'].forEach(sel => { const el = $(sel); if (el) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); } });
 
 function setAdding(on) {
+  if (on && measuring) measureStop();
   addingPlace = on;
   $('#map').classList.toggle('adding', on);
   $('#add-banner').classList.toggle('hidden', !on);
@@ -2377,7 +2394,7 @@ function setAdding(on) {
 }
 $('#add-place').onclick = () => setAdding(!addingPlace);
 $('#add-cancel').onclick = () => setAdding(false);
-map.on('click', e => { if (addingPlace) placeAt(e.latlng); });
+map.on('click', e => { if (measuring) { measureAdd(e.latlng); return; } if (addingPlace) placeAt(e.latlng); });
 
 function placeAt(latlng) {
   setAdding(false);
@@ -2883,6 +2900,104 @@ function renderManage() {
 }
 
 /* =====================================================================
+   MEASURE — tap points to measure real distances on the map.
+   Snaps to plot corners/edges and to place names, so "corner to road"
+   starts exactly at the corner. Distances use the Earth's real shape.
+   ===================================================================== */
+let measuring = false, mPts = [];          // mPts: [{ll, snap}]
+const mLayer = L.layerGroup().addTo(map);
+const fmtDist = d => d >= 1000 ? (d / 1000).toFixed(2) + ' km' : (d >= 100 ? d.toFixed(0) : d.toFixed(1)) + ' m';
+
+function measureStart() {
+  if (addingPlace) setAdding(false);
+  measuring = true;
+  $('#map').classList.add('measuring');
+  $('#btn-measure').classList.add('on'); $('#tv-measure').classList.add('on');
+  showLayerMenu && showLayerMenu(false);
+  measureDraw();
+}
+function measureStop() {
+  measuring = false;
+  $('#map').classList.remove('measuring');
+  $('#btn-measure').classList.remove('on'); $('#tv-measure').classList.remove('on');
+  measureDraw();
+}
+function measureClear() { mPts = []; measureStop(); }
+$('#btn-measure').onclick = () => measuring ? measureStop() : measureStart();
+$('#tv-measure').onclick = () => measuring ? measureStop() : measureStart();
+
+// snap a tapped point to the nearest plot corner (or edge) if it is close on screen
+function measureSnap(ll) {
+  const P = map.latLngToContainerPoint(ll);
+  let best = null;
+  Object.keys(shapes).forEach(id => {
+    const p = plots.find(x => x.id === id); if (!p) return;
+    p.fitted.forEach((c, i) => {
+      const q = map.latLngToContainerPoint(c), d = P.distanceTo(q);
+      if (d < 22 && (!best || best.kind !== 'corner' || d < best.d)) best = { ll: L.latLng(c), d, kind: 'corner' };
+      if (best && best.kind === 'corner') return;
+      const n = p.fitted[(i + 1) % p.fitted.length], a = q, b = map.latLngToContainerPoint(n);
+      const abx = b.x - a.x, aby = b.y - a.y, t = Math.max(0, Math.min(1, ((P.x - a.x) * abx + (P.y - a.y) * aby) / (abx * abx + aby * aby || 1)));
+      const proj = L.point(a.x + abx * t, a.y + aby * t), de = P.distanceTo(proj);
+      if (de < 12 && (!best || (best.kind === 'edge' && de < best.d))) best = { ll: map.containerPointToLatLng(proj), d: de, kind: 'edge' };
+    });
+  });
+  return best ? { ll: best.ll, snap: best.kind } : { ll, snap: null };
+}
+function measureAdd(ll, exact) {
+  if (!measuring) return;
+  mPts.push(exact ? { ll, snap: 'place' } : measureSnap(ll));
+  measureDraw();
+}
+function measureDraw() {
+  mLayer.clearLayers();
+  updateTags();
+  const lls = mPts.map(p => p.ll);
+  if (lls.length > 1) {
+    L.polyline(lls, { color: '#111827', weight: 6, opacity: .6, interactive: false }).addTo(mLayer);
+    L.polyline(lls, { color: '#fbbf24', weight: 3, dashArray: '8 6', interactive: false }).addTo(mLayer);
+    for (let i = 1; i < lls.length; i++) {
+      const mid = L.latLng((lls[i - 1].lat + lls[i].lat) / 2, (lls[i - 1].lng + lls[i].lng) / 2);
+      L.marker(mid, { interactive: false, keyboard: false, icon: L.divIcon({ className: 'pl-icon', iconSize: [0, 0], html: `<div class="m-len">${fmtDist(map.distance(lls[i - 1], lls[i]))}</div>` }) }).addTo(mLayer);
+    }
+  }
+  mPts.forEach((p, i) => {
+    const mk = L.marker(p.ll, { draggable: true, keyboard: false, zIndexOffset: 3000,
+      icon: L.divIcon({ className: 'pl-icon', iconSize: [0, 0], html: `<div class="m-pt ${p.snap ? 'snap' : ''}"></div>` }) }).addTo(mLayer);
+    mk.on('drag', e => { mPts[i] = { ll: e.target.getLatLng(), snap: null }; measureDrawLine(); });
+    mk.on('dragend', e => { mPts[i] = measureSnap(e.target.getLatLng()); measureDraw(); });
+    mk.on('click', e => L.DomEvent.stopPropagation(e));
+  });
+  let total = 0; for (let i = 1; i < lls.length; i++) total += map.distance(lls[i - 1], lls[i]);
+  const bar = $('#measure-bar');
+  if (!measuring && !mPts.length) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  bar.innerHTML = `<span class="tot">📏 ${mPts.length > 1 ? fmtDist(total) : 'Measure'}</span>
+    <button id="m-undo" ${mPts.length ? '' : 'disabled'}>Undo</button><button id="m-clear">Clear</button>
+    <button class="go" id="m-done">${measuring ? 'Done' : 'Measure again'}</button>
+    <span class="hint">${measuring ? (mPts.length ? 'Tap the next point. Points turn green when they snap to a plot corner or edge. Drag a point to adjust.' : 'Tap where to start: near a plot corner it snaps exactly to the corner.') : 'Line kept on the map. Clear removes it.'}</span>`;
+  // stopPropagation: the bar is redrawn on click, so the map must not also treat it as a map tap
+  $('#m-undo').onclick = e => { e.stopPropagation(); mPts.pop(); measureDraw(); };
+  $('#m-clear').onclick = e => { e.stopPropagation(); measureClear(); };
+  $('#m-done').onclick = e => { e.stopPropagation(); measuring ? measureStop() : measureStart(); };
+}
+// while dragging: only redraw line and labels (keep the dragged marker alive)
+function measureDrawLine() {
+  mLayer.eachLayer(l => { if (l instanceof L.Polyline || (l.options.icon && /m-len/.test(l.options.icon.options.html || ''))) mLayer.removeLayer(l); });
+  const lls = mPts.map(p => p.ll);
+  if (lls.length > 1) {
+    L.polyline(lls, { color: '#111827', weight: 6, opacity: .6, interactive: false }).addTo(mLayer);
+    L.polyline(lls, { color: '#fbbf24', weight: 3, dashArray: '8 6', interactive: false }).addTo(mLayer);
+    for (let i = 1; i < lls.length; i++) {
+      const mid = L.latLng((lls[i - 1].lat + lls[i].lat) / 2, (lls[i - 1].lng + lls[i].lng) / 2);
+      L.marker(mid, { interactive: false, keyboard: false, icon: L.divIcon({ className: 'pl-icon', iconSize: [0, 0], html: `<div class="m-len">${fmtDist(map.distance(lls[i - 1], lls[i]))}</div>` }) }).addTo(mLayer);
+    }
+  }
+  let total = 0; for (let i = 1; i < lls.length; i++) total += map.distance(lls[i - 1], lls[i]);
+  const t = document.querySelector('#measure-bar .tot'); if (t) t.textContent = '📏 ' + (lls.length > 1 ? fmtDist(total) : 'Measure');
+}
+
+/* =====================================================================
    TV PRESENTATION — for showing land to buyers on a big screen.
    Hides all agent/admin things; never shows seller names or phones.
    ===================================================================== */
@@ -2949,7 +3064,7 @@ document.addEventListener('keydown', e => {
   if (!tvOn || e.target.matches('input, textarea, select')) return;
   if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); tvStep(1); }
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); tvStep(-1); }
-  else if (e.key === 'Escape') exitTv();
+  else if (e.key === 'Escape') { if (measuring || mPts.length) measureClear(); else exitTv(); }
   else if (e.key.toLowerCase() === 'm') { const order = ['sat', 'groad', 'ghyb']; tvMap(order[(order.indexOf(mapChoice) + 1) % 3]); }
 });
 
@@ -3048,7 +3163,7 @@ function renderTvCard(p) {
 // plot clicks while in TV mode
 L.DomEvent.disableClickPropagation($('#tv-top')); L.DomEvent.disableClickPropagation($('#tv-panel')); L.DomEvent.disableClickPropagation($('#tv-card'));
 L.DomEvent.disableScrollPropagation($('#tv-panel'));
-map.on('click', () => { if (tvOn && selected && !addingPlace) { selected = null; tvRender(false); } });
+map.on('click', () => { if (tvOn && selected && !addingPlace && !measuring) { selected = null; tvRender(false); } });
 
 /* =====================================================================
    LIVE FIELD TEST
